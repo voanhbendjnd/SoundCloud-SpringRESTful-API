@@ -3,6 +3,7 @@ package djnd.project.SoundCloud.configs;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +20,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.util.Base64;
@@ -40,12 +42,15 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(
             HttpSecurity http,
-            SmartAuthenticationEntryPoint sap) throws Exception {
+            SmartAuthenticationEntryPoint sap,
+            @Qualifier("corsConfigurationSource") CorsConfigurationSource corsConfig) throws Exception {
         String[] whiteList = {
                 "/",
-                "/api/v1/auth/**"
+                "/api/v1/auth/**",
+                "/api/v1/**"
         };
         http
+                .cors(cors -> cors.configurationSource(corsConfig))
                 .csrf(c -> c.disable())
                 .authorizeHttpRequests(
                         authz -> authz

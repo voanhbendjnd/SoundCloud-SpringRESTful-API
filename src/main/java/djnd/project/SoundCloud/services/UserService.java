@@ -1,8 +1,10 @@
 package djnd.project.SoundCloud.services;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import org.apache.coyote.BadRequestException;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
@@ -10,6 +12,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import djnd.project.SoundCloud.domain.ResLoginDTO;
 import djnd.project.SoundCloud.domain.entity.User;
@@ -39,6 +42,7 @@ public class UserService {
     SessionManager sessionManager;
     RoleRepository roleRepository;
     MailService mailService;
+    FileService fileService;
     // private final UserMapper userMapper;
 
     public Long create(UserDTO dto) {
@@ -258,6 +262,30 @@ public class UserService {
         } else {
             return false;
         }
+    }
+
+    /*
+     * file: avatar file
+     */
+    public boolean updateAvatarUser(MultipartFile file) throws URISyntaxException, IOException {
+        var email = SecurityUtils.getCurrentUserLogin()
+                .orElseThrow(() -> new BadCredentialsException("You cannot upload avatar!"));
+
+        var user = this.userRepository.findByEmail(email);
+        if (user != null) {
+            if (file != null && !file.isEmpty()) {
+                var allowFile = Arrays.asList("jpg", "jpeg", "png");
+                if (allowFile.stream().anyMatch(x -> file.getOriginalFilename().toLowerCase().endsWith(x))) {
+
+                    user.setAvatar(this.fileService.getFinalNameAvatarFile(file));
+                    this.userRepository.save(user);
+                    return true;
+                }
+                return false;
+            }
+
+        }
+        return false;
     }
 
 }

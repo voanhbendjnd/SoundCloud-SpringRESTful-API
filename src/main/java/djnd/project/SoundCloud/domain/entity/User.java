@@ -38,6 +38,7 @@ public class User extends BaseEntity {
     Date otpRequestedTime;
     private static final long OTP_VALID_DURATION = 5 * 60 * 1000; // 5 minutes
     private boolean accept;
+    private String avatar;
 
     public boolean isOTPRequired() {
         if (this.getOneTimePassword() == null) {
