@@ -18,5 +18,6 @@ public class UserUpdateDTO {
     Long id;
     String name;
     String email;
+    Long roleId;
     // Role role;
 }

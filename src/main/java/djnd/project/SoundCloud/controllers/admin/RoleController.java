@@ -58,4 +58,5 @@ public class RoleController {
     public ResponseEntity<ResultPaginationDTO> findAll(@Filter Specification<Role> spec, Pageable pageable) {
         return ResponseEntity.ok(this.roleService.findAll(spec, pageable));
     }
+
 }

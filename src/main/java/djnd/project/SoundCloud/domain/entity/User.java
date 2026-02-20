@@ -1,11 +1,18 @@
 package djnd.project.SoundCloud.domain.entity;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.List;
 
+import djnd.project.SoundCloud.utils.SecurityUtils;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -36,9 +43,11 @@ public class User extends BaseEntity {
     String oneTimePassword;
     @Column(name = "otp_request_time")
     Date otpRequestedTime;
-    private static final long OTP_VALID_DURATION = 5 * 60 * 1000; // 5 minutes
-    private boolean accept;
-    private String avatar;
+    static final long OTP_VALID_DURATION = 5 * 60 * 1000; // 5 minutes
+    boolean accept;
+    String avatar;
+    @OneToMany(mappedBy = "user")
+    List<Track> tracks;
 
     public boolean isOTPRequired() {
         if (this.getOneTimePassword() == null) {

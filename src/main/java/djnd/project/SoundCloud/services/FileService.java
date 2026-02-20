@@ -52,4 +52,43 @@ public class FileService {
         }
         return lastName;
     }
+
+    public String getFinalNameTrackImgFile(MultipartFile file) throws URISyntaxException, IOException {
+        var uploadPath = baseURI + "img-tracks";
+        var directoryPath = Paths.get(uploadPath);
+        Files.createDirectories(directoryPath);
+
+        var originalName = file.getOriginalFilename();
+        if (originalName == null) {
+            originalName = "unnanamed";
+        }
+        var lastName = System.currentTimeMillis() + "-" + StringUtils.cleanPath(originalName);
+
+        var filePath = directoryPath.resolve(lastName);
+
+        try (InputStream inputStream = file.getInputStream()) {
+            Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
+        }
+        return lastName;
+    }
+
+    public String getFinalNameTrackFile(MultipartFile file) throws URISyntaxException, IOException {
+        var uploadPath = baseURI + "audio-tracks";
+        var directoryPath = Paths.get(uploadPath);
+        Files.createDirectories(directoryPath);
+
+        var originalName = file.getOriginalFilename();
+        if (originalName == null) {
+            originalName = "unnanamed";
+        }
+        var lastName = System.currentTimeMillis() + "-" + StringUtils.cleanPath(originalName);
+
+        var filePath = directoryPath.resolve(lastName);
+
+        try (InputStream inputStream = file.getInputStream()) {
+            Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
+        }
+        return lastName;
+    }
+
 }

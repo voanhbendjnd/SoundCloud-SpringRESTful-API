@@ -25,5 +25,5 @@ public class UserDTO {
     private ManagementPassword managementPassword;
     @JsonProperty("one_time_password")
     private String oneTimePassword;
-
+    private Long roleId;
 }

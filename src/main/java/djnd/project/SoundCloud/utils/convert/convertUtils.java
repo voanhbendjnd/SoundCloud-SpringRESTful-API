@@ -20,6 +20,10 @@ public class convertUtils {
         res.setName(user.getName());
         res.setUpdatedAt(user.getUpdatedAt());
         res.setCreatedBy(user.getCreatedBy());
+        if (user.getRole() != null) {
+            res.setRole(new ResUser.Role(user.getRole().getId(), user.getRole().getName()));
+
+        }
         return res;
     }
 

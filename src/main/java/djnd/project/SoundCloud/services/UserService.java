@@ -49,9 +49,13 @@ public class UserService {
         if (this.userRepository.existsByEmail(dto.getEmail())) {
             throw new DuplicateResourceException("Email", dto.getEmail());
         }
+        var role = roleRepository.findById(dto.getRoleId())
+                .orElseThrow(() -> new ResourceNotFoundException("Role", dto.getRoleId() + ""));
         var user = new User();
+        user.setRole(role);
         user.setEmail(dto.getEmail());
         user.setName(dto.getName());
+
         user.setAccept(false);
         user.setPassword(dto.getManagementPassword().getPassword());
         var lastUser = this.userRepository.save(user);
@@ -65,7 +69,15 @@ public class UserService {
             user.setName(dto.getName());
         }
         if (dto.getEmail() != null && !dto.getEmail().trim().isEmpty()) {
+            if (this.userRepository.existsByEmailAndIdNot(dto.getEmail(), dto.getId())) {
+                throw new DuplicateResourceException("Email User", dto.getEmail());
+            }
             user.setEmail(dto.getEmail());
+        }
+        if (dto.getRoleId() != null) {
+            var role = this.roleRepository.findById(dto.getRoleId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Role", dto.getRoleId() + ""));
+            user.setRole(role);
         }
         var lastUser = this.userRepository.save(user);
         return convertUtils.toResUser(lastUser);
@@ -87,7 +99,7 @@ public class UserService {
     }
 
     public void deleteById(long id) {
-        var user = this.userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ID", ""));
+        var user = this.userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ID", id + ""));
         this.userRepository.delete(user);
     }
 
