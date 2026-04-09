@@ -3,6 +3,8 @@ package djnd.project.SoundCloud.services;
 import java.io.IOException;
 import java.net.URISyntaxException;
 
+import djnd.project.SoundCloud.domain.entity.Category;
+import jakarta.persistence.criteria.Join;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,7 @@ import djnd.project.SoundCloud.repositories.CategoryRepository;
 import djnd.project.SoundCloud.repositories.TrackRepository;
 import djnd.project.SoundCloud.repositories.UserRepository;
 import djnd.project.SoundCloud.utils.SecurityUtils;
+import djnd.project.SoundCloud.utils.error.DuplicateResourceException;
 import djnd.project.SoundCloud.utils.error.PermissionException;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
 import lombok.AccessLevel;
@@ -34,6 +37,9 @@ public class TrackService {
     public void create(TrackDTO dto, MultipartFile imgUrl, MultipartFile trackUrl)
             throws URISyntaxException, IOException, PermissionException {
         var track = new Track();
+        if (this.trackRepository.existsByTitle(dto.getTitle())) {
+            throw new DuplicateResourceException("Track Title", dto.getTitle());
+        }
         var category = this.categoryRepository.findById(dto.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category ID", "#" + dto.getCategoryId()));
         track.setCategory(category);
@@ -51,10 +57,15 @@ public class TrackService {
         this.trackRepository.save(track);
     }
 
-    public ResultPaginationDTO fetchAllWithPagination(Specification<Track> spec, Pageable pageable) {
+    public ResultPaginationDTO fetchAllWithPagination(Specification<Track> spec, Pageable pageable, String category) {
         var res = new ResultPaginationDTO();
         var meta = new ResultPaginationDTO.Meta();
-        var page = this.trackRepository.findAll(spec, pageable);
+        Specification<Track> sp = (r, q, c) -> {
+            Join<Track, Category> joinCategory = r.join("category");
+            return c.equal(joinCategory.get("name"), "POP");
+
+        };
+        var page = this.trackRepository.findAll(Specification.allOf(spec.and(sp)), pageable);
         meta.setPage(pageable.getPageNumber() + 1);
         meta.setPageSize(pageable.getPageSize());
         meta.setPages(page.getTotalPages());

@@ -8,5 +8,7 @@ import djnd.project.SoundCloud.domain.entity.Track;
 
 @Repository
 public interface TrackRepository extends JpaRepository<Track, Long>, JpaSpecificationExecutor<Track> {
+    boolean existsByTitleAndIdNot(String title, Long id);
 
+    boolean existsByTitle(String tile);
 }

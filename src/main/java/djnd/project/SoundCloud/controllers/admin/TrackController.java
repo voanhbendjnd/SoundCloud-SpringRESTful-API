@@ -7,12 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.turkraft.springfilter.boot.Filter;
@@ -40,7 +35,8 @@ public class TrackController {
     }
 
     @GetMapping
-    public ResponseEntity<?> fetchAllWithPagination(@Filter Specification<Track> spec, Pageable pageable) {
-        return ResponseEntity.ok(this.trackService.fetchAllWithPagination(spec, pageable));
+    public ResponseEntity<?> fetchAllWithPagination(@Filter Specification<Track> spec, Pageable pageable,
+            @RequestParam(value = "category", required = false) String category) {
+        return ResponseEntity.ok(this.trackService.fetchAllWithPagination(spec, pageable, category));
     }
 }

@@ -47,7 +47,8 @@ public class SecurityConfig {
         String[] whiteList = {
                 "/",
                 "/api/v1/auth/**",
-                "/api/v1/**"
+                "/api/v1/**",
+                "/storage/**"
         };
         http
                 .cors(cors -> cors.configurationSource(corsConfig))

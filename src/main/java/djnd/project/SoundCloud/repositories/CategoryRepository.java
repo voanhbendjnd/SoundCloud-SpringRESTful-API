@@ -8,5 +8,7 @@ import djnd.project.SoundCloud.domain.entity.Category;
 
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long>, JpaSpecificationExecutor<Category> {
+    boolean existsByName(String name);
 
+    boolean existsByNameAndIdNot(String name, Long id);
 }
