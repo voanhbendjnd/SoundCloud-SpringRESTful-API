@@ -48,7 +48,7 @@ public class User extends BaseEntity {
     String avatar;
     @OneToMany(mappedBy = "user")
     List<Track> tracks;
-
+    Boolean status;
     public boolean isOTPRequired() {
         if (this.getOneTimePassword() == null) {
             return false;

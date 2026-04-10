@@ -51,7 +51,12 @@ public class AuthController {
         this.securityUtils = securityUtils;
         this.builder = builder;
     }
-
+    /*
+    * at: new request login for spring handle
+    * auth: check password and email, incorrect throw 401
+    * SecurityContextHolder --- setAuthentication save status login with authenticated = true
+    *
+    * */
     @PostMapping("/login")
     @ApiMessage("Login account")
     public ResponseEntity<ResLoginDTO> login(@Valid @RequestBody LoginDTO dto) throws BadCredentialsException {
@@ -61,7 +66,7 @@ public class AuthController {
         var res = new ResLoginDTO();
         var principal = auth.getPrincipal();
         var customUser = (CustomUserDetails) principal;
-        var user = customUser.getUser();
+        var user = customUser.user();
         var userLogin = new ResLoginDTO.UserLogin();
         userLogin.setEmail(user.getEmail());
         userLogin.setId(user.getId());
@@ -96,7 +101,7 @@ public class AuthController {
     }
 
     @GetMapping("/auth/refresh")
-    @ApiMessage("Create new Resfresh and Access Token when User back")
+    @ApiMessage("Create new res fresh and Access Token when User back")
     public ResponseEntity<ResLoginDTO> resetRefreshToken(
             @CookieValue(name = "refresh_token", defaultValue = "invalid") String refreshToken) {
         if (refreshToken.equals("invalid")) {
