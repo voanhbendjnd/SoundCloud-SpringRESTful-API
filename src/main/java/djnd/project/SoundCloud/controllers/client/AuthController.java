@@ -37,12 +37,12 @@ import lombok.experimental.FieldDefaults;
 @RequestMapping("/api/v1/auth")
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AuthController {
-    UserService userService;
-    AuthenticationManagerBuilder builder;
-    SessionManager sessionManager;
-    SecurityUtils securityUtils;
+    final UserService userService;
+    final AuthenticationManagerBuilder builder;
+    final SessionManager sessionManager;
+    final SecurityUtils securityUtils;
     @Value("${djnd.jwt.refresh-token-validity-in-seconds}")
-    Long refreshTokenExpiration;
+    private Long refreshTokenExpiration;
 
     public AuthController(UserService userService,
             AuthenticationManagerBuilder builder, SessionManager sessionManager, SecurityUtils securityUtils) {
