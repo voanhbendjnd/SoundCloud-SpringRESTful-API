@@ -34,7 +34,7 @@ public class SecurityConfig {
     @Value("${djnd.jwt.base64-secret}")
     private String jwtKey;
 
-    @Bean // ghi de cau hinh mac dinh(override configuration defaut)
+    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }

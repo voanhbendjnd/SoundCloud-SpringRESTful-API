@@ -21,7 +21,8 @@ public record CustomUserDetails(User user) implements UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
         var permissions = user.getRole().getPermissions();
         var authSet = new HashSet<SimpleGrantedAuthority>();
-        authSet.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().getName().toUpperCase()));
+        String roleName = user.getRole().getName() != null ? user.getRole().getName().toUpperCase() : "USER_NORMAL";
+        authSet.add(new SimpleGrantedAuthority("ROLE_" + roleName));
         for (var x : permissions) {
             authSet.add(new SimpleGrantedAuthority(x.getName()));
         }

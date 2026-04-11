@@ -13,7 +13,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     User findByEmail(String email);
     User findByEmailIgnoreCase(String email);
     User findByEmailAndRefreshToken(String email, String refreshToken);
-
+    boolean existsByEmailIgnoreCase(String email);
     boolean existsByEmailAndIdNot(String email, Long id);
 
 }

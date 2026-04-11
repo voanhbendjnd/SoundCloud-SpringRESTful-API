@@ -1,5 +1,7 @@
 package djnd.project.SoundCloud.controllers.client;
 
+import djnd.project.SoundCloud.services.RoleService;
+import lombok.RequiredArgsConstructor;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -29,6 +31,7 @@ import djnd.project.SoundCloud.utils.SecurityUtils;
 import djnd.project.SoundCloud.utils.annotation.ApiMessage;
 import djnd.project.SoundCloud.utils.error.PasswordMismatchException;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
+import djnd.project.SoundCloud.domain.request.SocialLoginDTO;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
@@ -36,27 +39,23 @@ import lombok.experimental.FieldDefaults;
 @RestController
 @RequestMapping("/api/v1/auth")
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@RequiredArgsConstructor
 public class AuthController {
     final UserService userService;
     final AuthenticationManagerBuilder builder;
     final SessionManager sessionManager;
     final SecurityUtils securityUtils;
+    final RoleService roleService;
     @Value("${djnd.jwt.refresh-token-validity-in-seconds}")
     private Long refreshTokenExpiration;
 
-    public AuthController(UserService userService,
-            AuthenticationManagerBuilder builder, SessionManager sessionManager, SecurityUtils securityUtils) {
-        this.userService = userService;
-        this.sessionManager = sessionManager;
-        this.securityUtils = securityUtils;
-        this.builder = builder;
-    }
     /*
-    * at: new request login for spring handle
-    * auth: check password and email, incorrect throw 401
-    * SecurityContextHolder --- setAuthentication save status login with authenticated = true
-    *
-    * */
+     * at: new request login for spring handle
+     * auth: check password and email, incorrect throw 401
+     * SecurityContextHolder --- setAuthentication save status login with
+     * authenticated = true
+     *
+     */
     @PostMapping("/login")
     @ApiMessage("Login account")
     public ResponseEntity<ResLoginDTO> login(@Valid @RequestBody LoginDTO dto) throws BadCredentialsException {
@@ -80,8 +79,49 @@ public class AuthController {
         String refreshToken = this.securityUtils.createRefreshToken(user.getEmail(), res);
 
         this.userService.updateRefreshTokenByEmail(user.getEmail(), refreshToken);
+        res.setRefreshToken(refreshToken);
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(refreshTokenExpiration)
+                .build();
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).body(res);
+    }
+
+    @PostMapping("/social-login")
+    @ApiMessage("Social Login account")
+    public ResponseEntity<ResLoginDTO> socialLogin(@Valid @RequestBody SocialLoginDTO dto) {
+        var user = this.userService.socialLogin(dto);
+        var res = new ResLoginDTO();
+        var userLogin = new ResLoginDTO.UserLogin();
+        userLogin.setEmail(user.getEmail());
+        userLogin.setId(user.getId());
+        userLogin.setName(user.getName());
+        var role = user.getRole() != null ? user.getRole() : this.roleService.handleGetRoleCustomer();
+        userLogin.setRole(role.getName());
+        res.setUser(userLogin);
+        var sessionID = this.sessionManager.createNewSession(user);
+        String accessToken = this.securityUtils.createAccessToken(user.getEmail(), res, sessionID);
+        res.setAccessToken(accessToken);
+        String refreshToken = this.securityUtils.createRefreshToken(user.getEmail(), res);
+        res.setRefreshToken(refreshToken);
+        this.userService.updateRefreshTokenByEmail(user.getEmail(), refreshToken);
 
         ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(refreshTokenExpiration)
+                .build();
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).body(res);
+    }
+
+    @PostMapping("/github-login")
+    @ApiMessage("Social Login account")
+    public ResponseEntity<ResLoginDTO> githubLogin(@RequestBody SocialLoginDTO dto) {
+        var res = this.userService.loginWithGithub(dto.getAccessToken());
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", res.getRefreshToken())
                 .httpOnly(true)
                 .secure(true)
                 .path("/")

@@ -3,15 +3,23 @@ package djnd.project.SoundCloud.services;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import djnd.project.SoundCloud.domain.ResLoginDTO;
@@ -43,6 +51,7 @@ public class UserService {
     RoleRepository roleRepository;
     MailService mailService;
     FileService fileService;
+    RoleService roleService;
     // private final UserMapper userMapper;
 
     public Long create(UserDTO dto) {
@@ -58,6 +67,7 @@ public class UserService {
 
         user.setAccept(false);
         user.setPassword(dto.getManagementPassword().getPassword());
+        user.setType("SYSTEM");
         var lastUser = this.userRepository.save(user);
         return lastUser.getId();
     }
@@ -137,10 +147,27 @@ public class UserService {
         user.setAccept(false);
         user.setPassword(this.passwordEncoder.encode(dto.getManagementPassword().getConfirmPassword()));
         user.setRole(this.roleRepository.findByName("USER_NORMAL"));
+        user.setType("SYSTEM");
         var lastUser = this.userRepository.save(user);
         return lastUser.getId();
     }
 
+    public User socialLogin(djnd.project.SoundCloud.domain.request.SocialLoginDTO dto) {
+        var user = this.userRepository.findByEmail(dto.getEmail());
+        if (user == null) {
+            user = new User();
+            user.setEmail(dto.getEmail());
+            user.setName(dto.getName());
+            user.setType(dto.getType());
+            user.setAvatar(dto.getAvatar());
+            user.setRole(this.roleRepository.findByName("USER_NORMAL"));
+            user = this.userRepository.save(user);
+        }
+        return user;
+    }
+    /*
+    * condition: delete (delete refresh token), refresh (update res login dto)
+    * */
     public ResLoginDTO handleRefreshTokenWithCondition(String refreshToken, String condition) {
         var res = new ResLoginDTO();
         var userLogin = new ResLoginDTO.UserLogin();
@@ -161,6 +188,9 @@ public class UserService {
                 userLogin.setId(user.getId());
                 userLogin.setName(user.getName());
                 userLogin.setRole(user.getRole().getName());
+                userLogin.setType(user.getType() != null ? user.getType(): "SYSTEM");
+                userLogin.setAvatar(user.getAvatar());
+                userLogin.setUsername(user.getUsername());
                 res.setUser(userLogin);
                 var sessionID = this.sessionManager.createNewSession(user);
                 var accessToken = this.securityUtils.createAccessToken(email, res, sessionID);
@@ -300,4 +330,84 @@ public class UserService {
         return false;
     }
 
+    /*
+     * response "login": "username", "id" 123, "avatar_url: "http", "email": null
+     */
+    public Map<String, Object> getGithubUser(String accessTokenGithub) {
+        RestTemplate restTemplate = new RestTemplate();
+        var headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + accessTokenGithub);
+        headers.set("Accept", "application/json");
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+        ResponseEntity<Map> response = restTemplate.exchange("https://api.github.com/user",
+                HttpMethod.GET,
+                entity,
+                Map.class);
+        return response.getBody();
+    }
+
+    /*
+     * response: email, primary (true | false), verified (true | false)
+     */
+    public List<Map<String, Object>> getGithubEmails(String accessTokenGithub) {
+        var resTemplate = new RestTemplate();
+        var headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + accessTokenGithub);
+        headers.set("Accept", "application/json");
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+        ResponseEntity<List> response = resTemplate.exchange("https://api.github.com/user/emails",
+                HttpMethod.GET,
+                entity,
+                List.class);
+        return response.getBody();
+    }
+
+    public ResLoginDTO loginWithGithub(String accessTokenGithub) {
+        Map<String, Object> userInfo = this.getGithubUser(accessTokenGithub);
+        var userName = (String) userInfo.get("login");
+        var avatar = (String) userInfo.get("avatar_url");
+        var email = (String) userInfo.get("email");
+        var name = (String) userInfo.get("name");
+        if (email == null) {
+            List<Map<String, Object>> emails = this.getGithubEmails(accessTokenGithub);
+            email = emails.stream().filter(e -> (Boolean) e.get("primary") && (Boolean) e.get("verified"))
+                    .map(e -> (String) e.get("email")).findFirst().orElse(null);
+        }
+        if (email == null) {
+            throw new BadCredentialsException("Email nil!");
+        }
+        // if exists -> login
+        Optional<User> optionalUser = Optional.ofNullable(this.userRepository.findByEmailIgnoreCase(email));
+        if (optionalUser.isPresent()) {
+            return this.getUserLoginWhenAfterLogin(optionalUser.get());
+        }
+        var user = new User();
+        user.setRole(this.roleService.handleGetRoleCustomer());
+        user.setAvatar(avatar);
+        user.setEmail(email);
+        user.setName(name != null ? name : userName);
+        user.setType("GITHUB");
+        return this.getUserLoginWhenAfterLogin(this.userRepository.save(user));
+    }
+
+    public ResLoginDTO getUserLoginWhenAfterLogin(User user){
+        var res = new ResLoginDTO();
+        var userLogin = new ResLoginDTO.UserLogin();
+        var email = user.getEmail();
+        userLogin.setEmail(email);
+        userLogin.setId(user.getId());
+        userLogin.setName(user.getName());
+        userLogin.setRole(user.getRole().getName());
+        userLogin.setType(user.getType() != null ? user.getType(): "SYSTEM");
+        userLogin.setAvatar(user.getAvatar());
+        userLogin.setUsername(user.getUsername());
+        res.setUser(userLogin);
+        var sessionID = this.sessionManager.createNewSession(user);
+        var accessToken = this.securityUtils.createAccessToken(email, res, sessionID);
+        res.setAccessToken(accessToken);
+        var newRefreshToken = this.securityUtils.createRefreshToken(email, res);
+        updateRefreshTokenByEmail(email, newRefreshToken);
+        res.setRefreshToken(newRefreshToken);
+        return res;
+    }
 }

@@ -69,6 +69,15 @@ public class RoleService {
         this.roleRepository.delete(role);
     }
 
+
+    public Role handleGetRoleCustomer(){
+        var role = this.roleRepository.findByNameIgnoreCase("USER_NORMAL");
+        if(role != null){
+            return role;
+        }
+        throw new ResourceNotFoundException("ROLE", "USER_NORMAL");
+    }
+
     public ResultPaginationDTO findAll(Specification<Role> spec, Pageable pageable) {
         var res = new ResultPaginationDTO();
         var mt = new ResultPaginationDTO.Meta();

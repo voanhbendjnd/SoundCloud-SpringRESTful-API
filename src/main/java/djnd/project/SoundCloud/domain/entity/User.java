@@ -20,6 +20,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.validator.constraints.UniqueElements;
 
 @Entity
 @Table(name = "users")
@@ -32,6 +33,8 @@ public class User extends BaseEntity {
     String name;
     String email;
     String password;
+    // GITHUB, GOOGLE
+    String type;
     @Column(name = "session_id")
     String sessionId;
     @ManyToOne
@@ -48,7 +51,9 @@ public class User extends BaseEntity {
     String avatar;
     @OneToMany(mappedBy = "user")
     List<Track> tracks;
-    Boolean status;
+    Boolean status = true;
+    String username;
+
     public boolean isOTPRequired() {
         if (this.getOneTimePassword() == null) {
             return false;
