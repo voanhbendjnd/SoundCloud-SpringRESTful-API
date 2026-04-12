@@ -362,33 +362,38 @@ public class UserService {
         return response.getBody();
     }
 
-    public ResLoginDTO loginWithGithub(String accessTokenGithub) {
-        Map<String, Object> userInfo = this.getGithubUser(accessTokenGithub);
-        var userName = (String) userInfo.get("login");
-        var avatar = (String) userInfo.get("avatar_url");
-        var email = (String) userInfo.get("email");
-        var name = (String) userInfo.get("name");
-        if (email == null) {
-            List<Map<String, Object>> emails = this.getGithubEmails(accessTokenGithub);
-            email = emails.stream().filter(e -> (Boolean) e.get("primary") && (Boolean) e.get("verified"))
-                    .map(e -> (String) e.get("email")).findFirst().orElse(null);
+    public ResLoginDTO loginWithSocial(String accessToken, String type) {
+        if(type.equalsIgnoreCase("GITHUB")){
+            Map<String, Object> userInfo = this.getGithubUser(accessToken);
+            var userName = (String) userInfo.get("login");
+            var avatar = (String) userInfo.get("avatar_url");
+            var email = (String) userInfo.get("email");
+            var name = (String) userInfo.get("name");
+            if (email == null) {
+                List<Map<String, Object>> emails = this.getGithubEmails(accessToken);
+                email = emails.stream().filter(e -> (Boolean) e.get("primary") && (Boolean) e.get("verified"))
+                        .map(e -> (String) e.get("email")).findFirst().orElse(null);
+            }
+            if (email == null) {
+                throw new BadCredentialsException("Email nil!");
+            }
+            // if exists -> login
+            Optional<User> optionalUser = Optional.ofNullable(this.userRepository.findByEmailIgnoreCase(email));
+            if (optionalUser.isPresent()) {
+                return this.getUserLoginWhenAfterLogin(optionalUser.get());
+            }
+            var user = new User();
+            user.setRole(this.roleService.handleGetRoleCustomer());
+            user.setAvatar(avatar);
+            user.setEmail(email);
+            user.setName(name != null ? name : userName);
+            user.setType(type);
+            return this.getUserLoginWhenAfterLogin(this.userRepository.save(user));
         }
-        if (email == null) {
-            throw new BadCredentialsException("Email nil!");
-        }
-        // if exists -> login
-        Optional<User> optionalUser = Optional.ofNullable(this.userRepository.findByEmailIgnoreCase(email));
-        if (optionalUser.isPresent()) {
-            return this.getUserLoginWhenAfterLogin(optionalUser.get());
-        }
-        var user = new User();
-        user.setRole(this.roleService.handleGetRoleCustomer());
-        user.setAvatar(avatar);
-        user.setEmail(email);
-        user.setName(name != null ? name : userName);
-        user.setType("GITHUB");
-        return this.getUserLoginWhenAfterLogin(this.userRepository.save(user));
+        return null;
+
     }
+
 
     public ResLoginDTO getUserLoginWhenAfterLogin(User user){
         var res = new ResLoginDTO();

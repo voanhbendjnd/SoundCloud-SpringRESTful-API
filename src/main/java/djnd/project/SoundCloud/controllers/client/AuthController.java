@@ -62,25 +62,11 @@ public class AuthController {
         var at = new UsernamePasswordAuthenticationToken(dto.getEmail(), dto.getPassword());
         var auth = this.builder.getObject().authenticate(at);
         SecurityContextHolder.getContext().setAuthentication(auth);
-        var res = new ResLoginDTO();
         var principal = auth.getPrincipal();
         var customUser = (CustomUserDetails) principal;
         var user = customUser.user();
-        var userLogin = new ResLoginDTO.UserLogin();
-        userLogin.setEmail(user.getEmail());
-        userLogin.setId(user.getId());
-        userLogin.setName(user.getName());
-        userLogin.setRole(user.getRole().getName());
-        res.setUser(userLogin);
-
-        var sessionID = this.sessionManager.createNewSession(user);
-        String accessToken = this.securityUtils.createAccessToken(user.getEmail(), res, sessionID);
-        res.setAccessToken(accessToken);
-        String refreshToken = this.securityUtils.createRefreshToken(user.getEmail(), res);
-
-        this.userService.updateRefreshTokenByEmail(user.getEmail(), refreshToken);
-        res.setRefreshToken(refreshToken);
-        ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
+        var res = this.userService.getUserLoginWhenAfterLogin(user);
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", res.getRefreshToken())
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
@@ -89,7 +75,7 @@ public class AuthController {
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).body(res);
     }
 
-    @PostMapping("/social-login")
+    @PostMapping("/social-login/old")
     @ApiMessage("Social Login account")
     public ResponseEntity<ResLoginDTO> socialLogin(@Valid @RequestBody SocialLoginDTO dto) {
         var user = this.userService.socialLogin(dto);
@@ -117,10 +103,10 @@ public class AuthController {
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).body(res);
     }
 
-    @PostMapping("/github-login")
+    @PostMapping("/social-login")
     @ApiMessage("Social Login account")
     public ResponseEntity<ResLoginDTO> githubLogin(@RequestBody SocialLoginDTO dto) {
-        var res = this.userService.loginWithGithub(dto.getAccessToken());
+        var res = this.userService.loginWithSocial(dto.getAccessToken(),  dto.getType());
         ResponseCookie cookie = ResponseCookie.from("refresh_token", res.getRefreshToken())
                 .httpOnly(true)
                 .secure(true)

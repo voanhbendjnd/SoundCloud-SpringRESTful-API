@@ -1,5 +1,6 @@
 package djnd.project.SoundCloud.domain;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -11,7 +12,9 @@ import lombok.experimental.FieldDefaults;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ResLoginDTO {
+    @JsonProperty("refresh_token")
     String refreshToken;
+    @JsonProperty("access_token")
     String accessToken;
     UserLogin user;
 
