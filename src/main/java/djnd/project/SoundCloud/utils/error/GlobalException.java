@@ -22,11 +22,11 @@ public class GlobalException {
     @ExceptionHandler(value = {
             BadCredentialsException.class
     })
-    public ResponseEntity<RestResponse<Object>> handleBadCredentialException(BadCredentialsException ex) {
+    public ResponseEntity<RestResponse<Object>> handleBadCredentialException() {
         var status = HttpStatus.UNAUTHORIZED.value();
         var res = new RestResponse<>();
         res.setStatusCode(status);
-        res.setMessage(ex.getMessage());
+        res.setMessage("Username or password incorrect!");
         res.setError("Login Failed");
         return ResponseEntity.status(status).body(res);
     }
@@ -123,5 +123,7 @@ public class GlobalException {
         res.setMessage(ex.getMessage());
         return ResponseEntity.status(status).body(res);
     }
+
+
 
 }
