@@ -63,4 +63,10 @@ public class PermissionController {
         return ResponseEntity.ok(this.permissionService.findAll(spec, pageable));
     }
 
+    @GetMapping("/data")
+    @ApiMessage("Fetch all name and id")
+    public ResponseEntity<?> findAllIdAndName() {
+        return ResponseEntity.ok(this.permissionService.getIdAndName());
+    }
+
 }

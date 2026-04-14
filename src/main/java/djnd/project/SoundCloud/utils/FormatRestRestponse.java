@@ -14,6 +14,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import djnd.project.SoundCloud.domain.response.RestResponse;
 import djnd.project.SoundCloud.utils.annotation.ApiMessage;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.core.io.support.ResourceRegion;
+import java.util.Collection;
 
 @ControllerAdvice
 public class FormatRestRestponse implements ResponseBodyAdvice<Object> {
@@ -39,22 +41,29 @@ public class FormatRestRestponse implements ResponseBodyAdvice<Object> {
 
         HttpServletResponse servletResponse = ((ServletServerHttpResponse) response).getServletResponse();
         int status = servletResponse.getStatus();
-        RestResponse<Object> res = new RestResponse<>();
-        res.setStatusCode(status);
 
-        // Nếu là String hoặc Resource thì không bọc trong response chung
-        if (body instanceof String || body instanceof Resource) {
+        // Nếu là String, Resource, ResourceRegion hoặc Collection<ResourceRegion> thì không bọc
+        if (body instanceof String || body instanceof Resource || body instanceof ResourceRegion) {
             return body;
+        }
+
+        if (body instanceof Collection) {
+            Collection<?> collection = (Collection<?>) body;
+            if (!collection.isEmpty() && collection.iterator().next() instanceof ResourceRegion) {
+                return body;
+            }
         }
 
         if (status >= 400) {
             return body; // Trả về lỗi gốc mà không bọc lại
         } else {
+            RestResponse<Object> res = new RestResponse<>();
+            res.setStatusCode(status);
             res.setData(body);
             ApiMessage message = returnType.getMethodAnnotation(ApiMessage.class);
             res.setMessage(message != null ? message.value() : "Call API success!");
+            return res;
         }
-        return res;
     }
 
 }

@@ -8,15 +8,13 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import djnd.project.SoundCloud.domain.entity.User;
-import lombok.AccessLevel;
-import lombok.experimental.FieldDefaults;
 
 public record CustomUserDetails(User user) implements UserDetails {
     /*
      * ROLE_ for check @Pre hasRole('ADMIN')
      * authorize permission for check UPLOAD_SONG,...
      * return for auth.getAuthorities()
-     * */
+     */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         var permissions = user.getRole().getPermissions();

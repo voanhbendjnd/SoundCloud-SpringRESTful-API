@@ -52,6 +52,7 @@ public class Track {
 
     @PrePersist
     public void handleBeforeCreateAt() {
+        this.updatedAt = LocalDateTime.now();
         this.createdAt = LocalDateTime.now();
     }
 

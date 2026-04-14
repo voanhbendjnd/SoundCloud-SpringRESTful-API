@@ -1,6 +1,6 @@
 package djnd.project.SoundCloud.domain.response.permissions;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 import lombok.AccessLevel;
 import lombok.Data;
@@ -13,6 +13,7 @@ public class ResPermission {
     String name;
     String method;
     String module;
+    String apiPath;
     String createdBy, updatedBy;
-    Instant createdAt, updatedAt;
+    LocalDateTime createdAt, updatedAt;
 }

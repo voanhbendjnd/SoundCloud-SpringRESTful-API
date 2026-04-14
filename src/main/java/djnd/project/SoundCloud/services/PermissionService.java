@@ -1,10 +1,14 @@
 package djnd.project.SoundCloud.services;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import djnd.project.SoundCloud.domain.entity.Permission;
+import djnd.project.SoundCloud.domain.it.PermissionIdName;
 import djnd.project.SoundCloud.domain.request.permissions.PermissionDTO;
 import djnd.project.SoundCloud.domain.response.ResultPaginationDTO;
 import djnd.project.SoundCloud.domain.response.permissions.ResPermission;
@@ -70,6 +74,10 @@ public class PermissionService {
         res.setMeta(mt);
         res.setResult(page.getContent().stream().map(convertUtils::toResPermission).toList());
         return res;
+    }
+
+    public List<PermissionIdName> getIdAndName() {
+        return this.permissionRepository.getAllIdAndName();
     }
 
 }

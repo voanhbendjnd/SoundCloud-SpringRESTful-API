@@ -30,6 +30,7 @@ import djnd.project.SoundCloud.services.UserService;
 import djnd.project.SoundCloud.utils.SecurityUtils;
 import djnd.project.SoundCloud.utils.annotation.ApiMessage;
 import djnd.project.SoundCloud.utils.error.PasswordMismatchException;
+import djnd.project.SoundCloud.utils.error.PermissionException;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
 import djnd.project.SoundCloud.domain.request.SocialLoginDTO;
 import jakarta.validation.Valid;
@@ -106,7 +107,7 @@ public class AuthController {
     @PostMapping("/social-login")
     @ApiMessage("Social Login account")
     public ResponseEntity<ResLoginDTO> githubLogin(@RequestBody SocialLoginDTO dto) {
-        var res = this.userService.loginWithSocial(dto.getAccessToken(),  dto.getType());
+        var res = this.userService.loginWithSocial(dto.getAccessToken(), dto.getType());
         ResponseCookie cookie = ResponseCookie.from("refresh_token", res.getRefreshToken())
                 .httpOnly(true)
                 .secure(true)
@@ -152,8 +153,9 @@ public class AuthController {
 
     @PostMapping("/logout")
     @ApiMessage("Logout Account")
-    public ResponseEntity<Void> logoutWithCookie() {
-        var email = SecurityUtils.getCurrentUserLogin().isPresent() ? securityUtils.getCurrentUserLogin().get() : "";
+    public ResponseEntity<Void> logoutWithCookie() throws PermissionException {
+        var email = SecurityUtils.getCurrentUserLogin()
+                .orElseThrow(() -> new PermissionException("You do not have permission!"));
         if (email.equals("")) {
             throw new BadCredentialsException("Account Invalid");
         }

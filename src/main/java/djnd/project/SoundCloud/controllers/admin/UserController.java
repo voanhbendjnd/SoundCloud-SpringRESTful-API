@@ -21,10 +21,15 @@ import com.turkraft.springfilter.boot.Filter;
 import djnd.project.SoundCloud.domain.entity.User;
 import djnd.project.SoundCloud.domain.request.users.UserDTO;
 import djnd.project.SoundCloud.domain.request.users.UserUpdateDTO;
-import djnd.project.SoundCloud.domain.response.ResultPaginationDTO;
 import djnd.project.SoundCloud.domain.response.users.ResUser;
 import djnd.project.SoundCloud.services.UserService;
 import jakarta.validation.Valid;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -63,9 +68,23 @@ public class UserController {
         return ResponseEntity.ok(null);
     }
 
-    @GetMapping("")
-    public ResponseEntity<ResultPaginationDTO> fetchAll(@Filter Specification<User> spec, Pageable pageable) {
-        return ResponseEntity.ok(this.userService.fetchAll(spec, pageable));
+    @GetMapping("/export")
+    public ResponseEntity<Resource> exportExcel() {
+        String filename = "users.xlsx";
+        InputStreamResource file = new InputStreamResource(this.userService.exportUsers());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 
+    @PostMapping("/import")
+    public ResponseEntity<?> importExcel(@RequestPart("file") MultipartFile file) {
+        return ResponseEntity.ok(this.userService.importUsers(file));
+    }
+    @GetMapping
+    public ResponseEntity<?>fetchAll(@Filter Specification<User> spec, Pageable pageable){
+        return ResponseEntity.ok(this.userService.fetchAll(spec, pageable));
+    }
 }

@@ -1,5 +1,6 @@
 package djnd.project.SoundCloud.services;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Arrays;
@@ -36,6 +37,7 @@ import djnd.project.SoundCloud.utils.convert.convertUtils;
 import djnd.project.SoundCloud.utils.error.DuplicateResourceException;
 import djnd.project.SoundCloud.utils.error.PasswordMismatchException;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
+import djnd.project.SoundCloud.utils.excel.ExcelUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -75,20 +77,22 @@ public class UserService {
     public ResUser updatePartial(UserUpdateDTO dto) {
         var user = this.userRepository.findById(dto.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", dto.getId() + ""));
-        if (dto.getName() != null && !dto.getName().trim().isEmpty()) {
-            user.setName(dto.getName());
-        }
+
         if (dto.getEmail() != null && !dto.getEmail().trim().isEmpty()) {
             if (this.userRepository.existsByEmailAndIdNot(dto.getEmail(), dto.getId())) {
                 throw new DuplicateResourceException("Email User", dto.getEmail());
             }
             user.setEmail(dto.getEmail());
         }
+        if (dto.getName() != null && !dto.getName().trim().isEmpty()) {
+            user.setName(dto.getName());
+        }
         if (dto.getRoleId() != null) {
             var role = this.roleRepository.findById(dto.getRoleId())
                     .orElseThrow(() -> new ResourceNotFoundException("Role", dto.getRoleId() + ""));
             user.setRole(role);
         }
+        user.setStatus(dto.getStatus());
         var lastUser = this.userRepository.save(user);
         return convertUtils.toResUser(lastUser);
 
@@ -122,10 +126,7 @@ public class UserService {
         mt.setPages(page.getTotalPages());
         mt.setTotal(page.getTotalElements());
         res.setMeta(mt);
-        res.setResult(page.getContent().stream().map(u -> {
-            var resUser = convertUtils.toResUser(u);
-            return resUser;
-        }).collect(Collectors.toList()));
+        res.setResult(page.getContent().stream().map(convertUtils::toResUser).collect(Collectors.toList()));
         return res;
     }
 
@@ -165,9 +166,10 @@ public class UserService {
         }
         return user;
     }
+
     /*
-    * condition: delete (delete refresh token), refresh (update res login dto)
-    * */
+     * condition: delete (delete refresh token), refresh (update res login dto)
+     */
     public ResLoginDTO handleRefreshTokenWithCondition(String refreshToken, String condition) {
         var res = new ResLoginDTO();
         var userLogin = new ResLoginDTO.UserLogin();
@@ -188,7 +190,7 @@ public class UserService {
                 userLogin.setId(user.getId());
                 userLogin.setName(user.getName());
                 userLogin.setRole(user.getRole().getName());
-                userLogin.setType(user.getType() != null ? user.getType(): "SYSTEM");
+                userLogin.setType(user.getType() != null ? user.getType() : "SYSTEM");
                 userLogin.setAvatar(user.getAvatar());
                 userLogin.setUsername(user.getUsername());
                 res.setUser(userLogin);
@@ -363,7 +365,7 @@ public class UserService {
     }
 
     public ResLoginDTO loginWithSocial(String accessToken, String type) {
-        if(type.equalsIgnoreCase("GITHUB")){
+        if (type.equalsIgnoreCase("GITHUB")) {
             Map<String, Object> userInfo = this.getGithubUser(accessToken);
             var userName = (String) userInfo.get("login");
             var avatar = (String) userInfo.get("avatar_url");
@@ -394,8 +396,7 @@ public class UserService {
 
     }
 
-
-    public ResLoginDTO getUserLoginWhenAfterLogin(User user){
+    public ResLoginDTO getUserLoginWhenAfterLogin(User user) {
         var res = new ResLoginDTO();
         var userLogin = new ResLoginDTO.UserLogin();
         var email = user.getEmail();
@@ -403,7 +404,7 @@ public class UserService {
         userLogin.setId(user.getId());
         userLogin.setName(user.getName());
         userLogin.setRole(user.getRole().getName());
-        userLogin.setType(user.getType() != null ? user.getType(): "SYSTEM");
+        userLogin.setType(user.getType() != null ? user.getType() : "SYSTEM");
         userLogin.setAvatar(user.getAvatar());
         userLogin.setUsername(user.getUsername());
         res.setUser(userLogin);
@@ -414,5 +415,28 @@ public class UserService {
         updateRefreshTokenByEmail(email, newRefreshToken);
         res.setRefreshToken(newRefreshToken);
         return res;
+    }
+
+    public ByteArrayInputStream exportUsers() {
+        List<User> users = this.userRepository.findAll();
+        return ExcelUtils.usersToExcel(users);
+    }
+
+    public Map<String, Object> importUsers(MultipartFile file) {
+        try {
+            List<User> users = ExcelUtils.excelToUsers(file.getInputStream());
+            // Basic validation and saving
+            for (User user : users) {
+                if (user.getEmail() != null && !this.userRepository.existsByEmail(user.getEmail())) {
+                    user.setPassword(this.passwordEncoder.encode("123456")); // Default password
+                    user.setRole(this.roleRepository.findByName("USER_NORMAL"));
+                    user.setType("SYSTEM");
+                    this.userRepository.save(user);
+                }
+            }
+            return Map.of("message", "Import successfull", "count", users.size());
+        } catch (IOException e) {
+            throw new RuntimeException("fail to store excel data: " + e.getMessage());
+        }
     }
 }

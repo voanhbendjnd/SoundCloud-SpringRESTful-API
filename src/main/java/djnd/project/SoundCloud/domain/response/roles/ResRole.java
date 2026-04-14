@@ -1,6 +1,6 @@
 package djnd.project.SoundCloud.domain.response.roles;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import lombok.AccessLevel;
@@ -20,7 +20,7 @@ public class ResRole {
     String description;
     List<Permission> permissions;
     String createdBy, updatedBy;
-    Instant createdAt, updatedAt;
+    LocalDateTime createdAt, updatedAt;
 
     @Getter
     @Setter

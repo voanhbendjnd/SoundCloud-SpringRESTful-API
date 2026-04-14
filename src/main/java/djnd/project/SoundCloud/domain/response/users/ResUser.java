@@ -1,6 +1,6 @@
 package djnd.project.SoundCloud.domain.response.users;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -17,8 +17,9 @@ public class ResUser {
     Long id;
     String email;
     String name;
+    Boolean status;
     String createdBy, updatedBy;
-    Instant createdAt, updatedAt;
+    LocalDateTime createdAt, updatedAt;
     Role role;
 
     @Data

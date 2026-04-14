@@ -20,6 +20,7 @@ public class convertUtils {
         res.setName(user.getName());
         res.setUpdatedAt(user.getUpdatedAt());
         res.setCreatedBy(user.getCreatedBy());
+        res.setStatus(user.getStatus() != null ? user.getStatus() : true);
         if (user.getRole() != null) {
             res.setRole(new ResUser.Role(user.getRole().getId(), user.getRole().getName()));
 
@@ -67,6 +68,7 @@ public class convertUtils {
         permission.setApiPath(dto.apiPath());
         permission.setMethod(dto.method());
         permission.setName(dto.name());
+        permission.setModule(dto.module());
         return permission;
     }
 
@@ -78,6 +80,7 @@ public class convertUtils {
         res.setMethod(permission.getMethod());
         res.setModule(permission.getModule());
         res.setName(permission.getName());
+        res.setApiPath(permission.getApiPath());
         res.setUpdatedAt(permission.getUpdatedAt());
         res.setUpdatedBy(permission.getUpdatedBy());
         return res;

@@ -41,7 +41,7 @@ public class RoleService {
     }
 
     public ResRole update(RoleDTO dto) throws DuplicateResourceException {
-        if (this.roleRepository.existsByName(dto.name())) {
+        if (this.roleRepository.existsByNameAndIdNot(dto.name(), dto.id())) {
             throw new DuplicateResourceException("Role Name", dto.name());
         }
         var permissions = this.permissionRepository.findByIdIn(dto.permissions());
@@ -69,10 +69,9 @@ public class RoleService {
         this.roleRepository.delete(role);
     }
 
-
-    public Role handleGetRoleCustomer(){
+    public Role handleGetRoleCustomer() {
         var role = this.roleRepository.findByNameIgnoreCase("USER_NORMAL");
-        if(role != null){
+        if (role != null) {
             return role;
         }
         throw new ResourceNotFoundException("ROLE", "USER_NORMAL");

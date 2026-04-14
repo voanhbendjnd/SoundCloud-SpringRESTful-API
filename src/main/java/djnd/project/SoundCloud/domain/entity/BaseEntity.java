@@ -1,6 +1,6 @@
 package djnd.project.SoundCloud.domain.entity;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 import djnd.project.SoundCloud.utils.SecurityUtils;
 import jakarta.persistence.GeneratedValue;
@@ -20,21 +20,22 @@ public class BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     String createdBy, updatedBy;
-    Instant createdAt, updatedAt;
+    LocalDateTime createdAt, updatedAt;
 
     @PrePersist
     public void handleBeforeCreateAt() {
-        this.createdBy = SecurityUtils.getCurrentUserLogin().isPresent() == true
-                ? SecurityUtils.getCurrentUserLogin().get()
-                : "";
-        this.createdAt = Instant.now();
+        var email = SecurityUtils.getCurrentUserLogin().orElse("No email");
+        this.createdBy = email;
+        this.updatedBy = email;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
     public void handleBeforeUpdateBy() {
-        this.updatedBy = SecurityUtils.getCurrentUserLogin().isPresent() == true
-                ? SecurityUtils.getCurrentUserLogin().get()
-                : "";
-        this.updatedAt = Instant.now();
+        var email = SecurityUtils.getCurrentUserLogin().orElse("No email");
+
+        this.updatedBy = email;
+        this.updatedAt = LocalDateTime.now();
     }
 }
