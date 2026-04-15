@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import djnd.project.SoundCloud.utils.constains.LoginType;
 import djnd.project.SoundCloud.utils.error.PermissionException;
+import jakarta.annotation.Nonnull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -241,16 +242,24 @@ public class UserService {
                 .orElseThrow(() -> new BadCredentialsException("You do not have access!"));
         var user = this.userRepository.findByEmail(email);
         if (user != null) {
-            var res = new ResLoginDTO.UserGetAccount();
-            var userLogin = new ResLoginDTO.UserLogin();
-            userLogin.setEmail(user.getEmail());
-            userLogin.setName(user.getName());
-            userLogin.setId(user.getId());
-            userLogin.setRole(user.getRole().getName());
-            res.setUser(userLogin);
-            return res;
+            return getUserGetAccount(user);
         }
         throw new ResourceNotFoundException("Account", email);
+    }
+
+    @Nonnull
+    private static ResLoginDTO.UserGetAccount getUserGetAccount(User user) {
+        var res = new ResLoginDTO.UserGetAccount();
+        var userLogin = new ResLoginDTO.UserLogin();
+        userLogin.setEmail(user.getEmail());
+        userLogin.setName(user.getName());
+        userLogin.setId(user.getId());
+        userLogin.setRole(user.getRole().getName());
+        userLogin.setType(user.getType() != null ? user.getType() : "SYSTEM");
+        userLogin.setAvatar(user.getAvatar());
+        userLogin.setUsername(user.getUsername());
+        res.setUser(userLogin);
+        return res;
     }
 
     public boolean updatePassword(UpdatePassword dto) {
@@ -276,7 +285,7 @@ public class UserService {
         return false;
     }
 
-    public void forgotPasword(UserDTO dto) {
+    public void forgotPassword(UserDTO dto) {
         var user = this.userRepository.findByEmail(dto.getEmail());
         if (user != null) {
             this.mailService.sendOTPToEmail(user, " Là Mã Khôi Phục Mật Khẩu Sound Clound Account Của Bạn", true);

@@ -27,7 +27,10 @@ import lombok.experimental.FieldDefaults;
 @RequiredArgsConstructor
 public class TrackController {
     TrackService trackService;
-
+    @GetMapping("/users/{id}")
+    public ResponseEntity<?>getMyTrackUploaded(@Filter Specification<Track> spec,   Pageable pageable, @PathVariable("id") Long userId) {
+        return ResponseEntity.ok(this.trackService.getMyTrackUploaded(spec, pageable, userId));
+    }
     @PostMapping("/upload-temp")
     public ResponseEntity<?> uploadTemp(@RequestPart("track") MultipartFile track)
             throws URISyntaxException, IOException {

@@ -130,8 +130,8 @@ public class AuthController {
     @GetMapping("/auth/refresh")
     @ApiMessage("Create new res fresh and Access Token when User back")
     public ResponseEntity<ResLoginDTO> resetRefreshToken(
-            @CookieValue(name = "refresh_token", defaultValue = "invalid") String refreshToken) {
-        if (refreshToken.equals("invalid")) {
+            @CookieValue(name = "refresh_token") String refreshToken) {
+        if (refreshToken == null || refreshToken.isEmpty()) {
             throw new BadCredentialsException("Refresh Token Invalid!");
         }
         var res = this.userService.handleRefreshTokenWithCondition(refreshToken, "refresh");
@@ -188,7 +188,7 @@ public class AuthController {
     @PostMapping("/forgot-password/request")
     @ApiMessage("Forgot password")
     public ResponseEntity<?> forgotPassword(@RequestBody UserDTO dto) {
-        this.userService.forgotPasword(dto);
+        this.userService.forgotPassword(dto);
         return ResponseEntity.ok("Send OTP success!");
     }
 

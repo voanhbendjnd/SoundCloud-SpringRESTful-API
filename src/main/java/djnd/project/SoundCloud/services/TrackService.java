@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 
 import djnd.project.SoundCloud.domain.entity.Category;
+import djnd.project.SoundCloud.domain.entity.User;
 import jakarta.persistence.criteria.Join;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -157,5 +159,22 @@ public class TrackService {
         }
         result.setUploader(uploader);
         return result;
+    }
+
+    public ResultPaginationDTO getMyTrackUploaded(Specification<Track> spec, Pageable pageable, Long userId){
+        var res = new ResultPaginationDTO();
+        var meta = new ResultPaginationDTO.Meta();
+        Specification<Track> ps = (r, q ,c ) ->{
+          Join<Track, User> joinUser = r.join("user");
+          return c.equal(joinUser.get("id"), userId);
+        };
+        meta.setPage(pageable.getPageNumber() + 1);
+        meta.setPageSize(pageable.getPageSize());
+        Page<Track> page = this.trackRepository.findAll(spec.and(ps), pageable);
+        meta.setPages(page.getTotalPages());
+        meta.setTotal(page.getTotalElements());
+        res.setMeta(meta);
+        res.setResult(page.getContent().stream().map(this::convertToResponse).toList());
+        return res;
     }
 }
