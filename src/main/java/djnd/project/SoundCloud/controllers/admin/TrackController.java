@@ -28,14 +28,27 @@ import lombok.experimental.FieldDefaults;
 public class TrackController {
     TrackService trackService;
 
+    @PostMapping("/upload-temp")
+    public ResponseEntity<?> uploadTemp(@RequestPart("track") MultipartFile track)
+            throws URISyntaxException, IOException {
+        return ResponseEntity.ok(this.trackService.uploadTempTrack(track));
+    }
+
     @PostMapping
-    public ResponseEntity<?> create(@Valid @ModelAttribute TrackDTO dto, @RequestPart("img") MultipartFile img,
-            @RequestPart("track") MultipartFile track) throws URISyntaxException, IOException, PermissionException {
-        this.trackService.create(dto, img, track);
+    public ResponseEntity<?> createTrackByUser(@Valid @ModelAttribute TrackDTO dto, @RequestPart(value ="img", required = false) MultipartFile img,
+            @RequestParam(value = "trackUrl", required = false) String trackFileName) throws URISyntaxException, IOException, PermissionException {
+        this.trackService.createByUser(dto, img, trackFileName);
+        return ResponseEntity.status(HttpStatus.CREATED).body("Create new track success");
+    }
+    @PostMapping("/admin")
+    public ResponseEntity<?> createTrackByAdmin(@Valid @ModelAttribute TrackDTO dto, @RequestPart(value ="img", required = false) MultipartFile img,
+                                         @RequestParam(value = "trackUrl", required = false) MultipartFile trackUrl) throws URISyntaxException, IOException, PermissionException {
+        this.trackService.createTrackByAdmin(dto, img, trackUrl);
         return ResponseEntity.status(HttpStatus.CREATED).body("Create new track success");
     }
 
     @PutMapping
+            
     public ResponseEntity<?> update(@Valid @ModelAttribute TrackDTO dto,
             @RequestPart(value = "img", required = false) MultipartFile img,
             @RequestPart(value = "track", required = false) MultipartFile track)

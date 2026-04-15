@@ -9,6 +9,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import djnd.project.SoundCloud.utils.constains.LoginType;
+import djnd.project.SoundCloud.utils.error.PermissionException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
@@ -43,18 +46,34 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 @Service
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 @RequiredArgsConstructor
 public class UserService {
-    UserRepository userRepository;
-    PasswordEncoder passwordEncoder;
-    SecurityUtils securityUtils;
-    SessionManager sessionManager;
-    RoleRepository roleRepository;
-    MailService mailService;
-    FileService fileService;
-    RoleService roleService;
+    final UserRepository userRepository;
+    final PasswordEncoder passwordEncoder;
+    final SecurityUtils securityUtils;
+    final SessionManager sessionManager;
+    final RoleRepository roleRepository;
+    final MailService mailService;
+    final FileService fileService;
+    final RoleService roleService;
+    @Value("${djnd.soundcloud.location.folder.avatar}")
+    private String userFolder;
+    
     // private final UserMapper userMapper;
+
+    public User getUserLoggedOrThrow() throws PermissionException{
+        var emailOptional = SecurityUtils.getCurrentUserLogin();
+        if(emailOptional.isPresent()){
+            var email = emailOptional.get();
+            var user = this.userRepository.findByEmailIgnoreCase(email);
+            if(user != null){
+                return user;
+            }
+            throw new ResourceNotFoundException("User Email", email);
+        }
+        throw new PermissionException("You do not have permission!");
+    }
 
     public Long create(UserDTO dto) {
         if (this.userRepository.existsByEmail(dto.getEmail())) {
@@ -69,7 +88,7 @@ public class UserService {
 
         user.setAccept(false);
         user.setPassword(dto.getManagementPassword().getPassword());
-        user.setType("SYSTEM");
+        user.setType(LoginType.SYSTEM.toString());
         var lastUser = this.userRepository.save(user);
         return lastUser.getId();
     }
@@ -321,7 +340,7 @@ public class UserService {
                 var allowFile = Arrays.asList("jpg", "jpeg", "png");
                 if (allowFile.stream().anyMatch(x -> file.getOriginalFilename().toLowerCase().endsWith(x))) {
 
-                    user.setAvatar(this.fileService.getFinalNameAvatarFile(file));
+                    user.setAvatar(this.fileService.getFinalFileName(file, userFolder));
                     this.userRepository.save(user);
                     return true;
                 }

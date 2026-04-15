@@ -5,6 +5,7 @@ import java.net.URISyntaxException;
 
 import djnd.project.SoundCloud.domain.entity.Category;
 import jakarta.persistence.criteria.Join;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -25,35 +26,57 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 @RequiredArgsConstructor
 @Service
 public class TrackService {
-    TrackRepository trackRepository;
-    CategoryRepository categoryRepository;
-    UserRepository userRepository;
-    FileService fileService;
+    final TrackRepository trackRepository;
+    final CategoryRepository categoryRepository;
+    final UserRepository userRepository;
+    final FileService fileService;
+    final UserService userService;
 
-    public void create(TrackDTO dto, MultipartFile imgUrl, MultipartFile trackUrl)
-            throws URISyntaxException, IOException, PermissionException {
-        if (this.trackRepository.existsByTitle(dto.getTitle())) {
-            throw new DuplicateResourceException("Track Title", dto.getTitle());
-        }
+    @Value("${djnd.soundcloud.location.folder.img}")
+    private String imgFolder;
+    @Value("${djnd.soundcloud.location.folder.temp}")
+    private String tempFolder;
+    @Value("${djnd.soundcloud.location.folder.audio}")
+    private String audioFolder;
+
+    /*
+    * Save track audio before save infomation track!
+    * */
+    public String uploadTempTrack(MultipartFile trackUrl) throws URISyntaxException, IOException {
+        return this.fileService.getFinalFileName(trackUrl, tempFolder);
+    }
+
+    private Track toTrack(TrackDTO dto) {
         var track = new Track();
         var category = this.categoryRepository.findById(dto.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category ID", "#" + dto.getCategoryId()));
         track.setCategory(category);
         track.setDescription(dto.getDescription());
         track.setTitle(dto.getTitle());
-        var email = SecurityUtils.getCurrentUserLogin()
-                .orElseThrow(() -> new PermissionException("You do not have permission!"));
-        var user = this.userRepository.findByEmail(email);
-        if (user == null) {
-            throw new ResourceNotFoundException("Email User", email);
-        }
+        return track;
+    }
+
+    public void createTrackByAdmin(TrackDTO dto, MultipartFile imgUrl, MultipartFile trackUrl) throws URISyntaxException, IOException, PermissionException{
+        var track = this.toTrack(dto);
+        var user = this.userService.getUserLoggedOrThrow();
         track.setUser(user);
-        track.setImgUrl(this.fileService.getFinalNameTrackImgFile(imgUrl));
-        track.setTrackUrl(this.fileService.getFinalNameTrackFile(trackUrl));
+        track.setImgUrl(this.fileService.getFinalFileName(imgUrl, imgFolder));
+        track.setTrackUrl(this.fileService.getFinalFileName(trackUrl, audioFolder));
+        this.trackRepository.save(track);
+    }
+
+    public void createByUser(TrackDTO dto, MultipartFile imgUrl, String trackFileName)
+            throws URISyntaxException, IOException, PermissionException {
+        var track = this.toTrack(dto);
+        var user = this.userService.getUserLoggedOrThrow();
+        track.setUser(user);
+        track.setImgUrl(this.fileService.getFinalFileName(imgUrl, imgFolder));
+        this.fileService.moveFolderToOtherFolder(trackFileName, tempFolder, audioFolder);
+        track.setTrackUrl(trackFileName);
         this.trackRepository.save(track);
     }
 
@@ -62,10 +85,6 @@ public class TrackService {
         var track = this.trackRepository.findById(dto.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Track ID", "#" + dto.getId()));
 
-        if (this.trackRepository.existsByTitleAndIdNot(dto.getTitle(), dto.getId())) {
-            throw new DuplicateResourceException("Track Title", dto.getTitle());
-        }
-
         var category = this.categoryRepository.findById(dto.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category ID", "#" + dto.getCategoryId()));
         track.setCategory(category);
@@ -73,10 +92,10 @@ public class TrackService {
         track.setTitle(dto.getTitle());
 
         if (imgUrl != null && !imgUrl.isEmpty()) {
-            track.setImgUrl(this.fileService.getFinalNameTrackImgFile(imgUrl));
+            track.setImgUrl(this.fileService.getFinalFileName(imgUrl, imgFolder));
         }
         if (trackUrl != null && !trackUrl.isEmpty()) {
-            track.setTrackUrl(this.fileService.getFinalNameTrackFile(trackUrl));
+            track.setTrackUrl(this.fileService.getFinalFileName(trackUrl, audioFolder));
         }
 
         this.trackRepository.save(track);
