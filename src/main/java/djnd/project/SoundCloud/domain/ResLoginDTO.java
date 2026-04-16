@@ -17,6 +17,8 @@ public class ResLoginDTO {
     @JsonProperty("access_token")
     String accessToken;
     UserLogin user;
+    @JsonProperty("expires_in")
+    Long expiresIn;
 
     @Getter
     @Setter

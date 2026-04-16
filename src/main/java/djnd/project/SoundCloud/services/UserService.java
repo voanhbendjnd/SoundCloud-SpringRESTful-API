@@ -60,15 +60,17 @@ public class UserService {
     final RoleService roleService;
     @Value("${djnd.soundcloud.location.folder.avatar}")
     private String userFolder;
-    
+    @Value("${djnd.jwt.access-token-validity-in-seconds}")
+    private Long expiresIn;
+
     // private final UserMapper userMapper;
 
-    public User getUserLoggedOrThrow() throws PermissionException{
+    public User getUserLoggedOrThrow() throws PermissionException {
         var emailOptional = SecurityUtils.getCurrentUserLogin();
-        if(emailOptional.isPresent()){
+        if (emailOptional.isPresent()) {
             var email = emailOptional.get();
             var user = this.userRepository.findByEmailIgnoreCase(email);
-            if(user != null){
+            if (user != null) {
                 return user;
             }
             throw new ResourceNotFoundException("User Email", email);
@@ -217,6 +219,7 @@ public class UserService {
                 var sessionID = this.sessionManager.createNewSession(user);
                 var accessToken = this.securityUtils.createAccessToken(email, res, sessionID);
                 res.setAccessToken(accessToken);
+                res.setExpiresIn(expiresIn);
                 var newRefreshToken = this.securityUtils.createRefreshToken(email, res);
                 updateRefreshTokenByEmail(email, newRefreshToken);
                 res.setRefreshToken(newRefreshToken);
@@ -441,6 +444,7 @@ public class UserService {
         res.setAccessToken(accessToken);
         var newRefreshToken = this.securityUtils.createRefreshToken(email, res);
         updateRefreshTokenByEmail(email, newRefreshToken);
+        res.setExpiresIn(expiresIn);
         res.setRefreshToken(newRefreshToken);
         return res;
     }
