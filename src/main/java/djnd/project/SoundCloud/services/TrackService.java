@@ -46,8 +46,8 @@ public class TrackService {
     private String audioFolder;
 
     /*
-    * Save track audio before save infomation track!
-    * */
+     * Save track audio before save infomation track!
+     */
     public String uploadTempTrack(MultipartFile trackUrl) throws URISyntaxException, IOException {
         return this.fileService.getFinalFileName(trackUrl, tempFolder);
     }
@@ -62,7 +62,8 @@ public class TrackService {
         return track;
     }
 
-    public void createTrackByAdmin(TrackDTO dto, MultipartFile imgUrl, MultipartFile trackUrl) throws URISyntaxException, IOException, PermissionException{
+    public void createTrackByAdmin(TrackDTO dto, MultipartFile imgUrl, MultipartFile trackUrl)
+            throws URISyntaxException, IOException, PermissionException {
         var track = this.toTrack(dto);
         var user = this.userService.getUserLoggedOrThrow();
         track.setUser(user);
@@ -161,12 +162,12 @@ public class TrackService {
         return result;
     }
 
-    public ResultPaginationDTO getMyTrackUploaded(Specification<Track> spec, Pageable pageable, Long userId){
+    public ResultPaginationDTO getMyTrackUploaded(Specification<Track> spec, Pageable pageable, Long userId) {
         var res = new ResultPaginationDTO();
         var meta = new ResultPaginationDTO.Meta();
-        Specification<Track> ps = (r, q ,c ) ->{
-          Join<Track, User> joinUser = r.join("user");
-          return c.equal(joinUser.get("id"), userId);
+        Specification<Track> ps = (r, q, c) -> {
+            Join<Track, User> joinUser = r.join("user");
+            return c.equal(joinUser.get("id"), userId);
         };
         meta.setPage(pageable.getPageNumber() + 1);
         meta.setPageSize(pageable.getPageSize());
@@ -176,5 +177,11 @@ public class TrackService {
         res.setMeta(meta);
         res.setResult(page.getContent().stream().map(this::convertToResponse).toList());
         return res;
+    }
+
+    public Track getTrackOrThrow(Long id) {
+        var track = this.trackRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Track ID", "" + id));
+        return track;
     }
 }
