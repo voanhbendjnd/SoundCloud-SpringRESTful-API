@@ -23,4 +23,25 @@ public class ResComment {
     @JsonProperty("likes_count")
     Integer likesCount;
     String content;
+    Integer moment;
+    UserComment user;
+    TrackComment track;
+
+    @Getter
+    @Setter
+    public static class UserComment {
+        Long id;
+        String avatar;
+        String role;
+        String name;
+        String email;
+    }
+
+    @Setter
+    @Getter
+    public static class TrackComment {
+        Long id;
+        String imgUrl;
+        String title;
+    }
 }

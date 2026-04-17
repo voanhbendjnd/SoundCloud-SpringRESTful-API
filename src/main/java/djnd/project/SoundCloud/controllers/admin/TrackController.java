@@ -2,6 +2,7 @@ package djnd.project.SoundCloud.controllers.admin;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -13,9 +14,12 @@ import org.springframework.web.multipart.MultipartFile;
 import com.turkraft.springfilter.boot.Filter;
 
 import jakarta.validation.Valid;
+import djnd.project.SoundCloud.domain.entity.Comment;
 import djnd.project.SoundCloud.domain.entity.Track;
 import djnd.project.SoundCloud.domain.request.TrackDTO;
+import djnd.project.SoundCloud.services.CommentService;
 import djnd.project.SoundCloud.services.TrackService;
+import djnd.project.SoundCloud.utils.annotation.ApiMessage;
 import djnd.project.SoundCloud.utils.error.PermissionException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -27,10 +31,14 @@ import lombok.experimental.FieldDefaults;
 @RequiredArgsConstructor
 public class TrackController {
     TrackService trackService;
+    CommentService commentService;
+
     @GetMapping("/users/{id}")
-    public ResponseEntity<?>getMyTrackUploaded(@Filter Specification<Track> spec,   Pageable pageable, @PathVariable("id") Long userId) {
+    public ResponseEntity<?> getMyTrackUploaded(@Filter Specification<Track> spec, Pageable pageable,
+            @PathVariable("id") Long userId) {
         return ResponseEntity.ok(this.trackService.getMyTrackUploaded(spec, pageable, userId));
     }
+
     @PostMapping("/upload-temp")
     public ResponseEntity<?> uploadTemp(@RequestPart("track") MultipartFile track)
             throws URISyntaxException, IOException {
@@ -38,20 +46,25 @@ public class TrackController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createTrackByUser(@Valid @ModelAttribute TrackDTO dto, @RequestPart(value ="img", required = false) MultipartFile img,
-            @RequestParam(value = "trackUrl", required = false) String trackFileName) throws URISyntaxException, IOException, PermissionException {
+    public ResponseEntity<?> createTrackByUser(@Valid @ModelAttribute TrackDTO dto,
+            @RequestPart(value = "img", required = false) MultipartFile img,
+            @RequestParam(value = "trackUrl", required = false) String trackFileName)
+            throws URISyntaxException, IOException, PermissionException {
         this.trackService.createByUser(dto, img, trackFileName);
         return ResponseEntity.status(HttpStatus.CREATED).body("Create new track success");
     }
+
     @PostMapping("/admin")
-    public ResponseEntity<?> createTrackByAdmin(@Valid @ModelAttribute TrackDTO dto, @RequestPart(value ="img", required = false) MultipartFile img,
-                                         @RequestParam(value = "trackUrl", required = false) MultipartFile trackUrl) throws URISyntaxException, IOException, PermissionException {
+    public ResponseEntity<?> createTrackByAdmin(@Valid @ModelAttribute TrackDTO dto,
+            @RequestPart(value = "img", required = false) MultipartFile img,
+            @RequestParam(value = "trackUrl", required = false) MultipartFile trackUrl)
+            throws URISyntaxException, IOException, PermissionException {
         this.trackService.createTrackByAdmin(dto, img, trackUrl);
         return ResponseEntity.status(HttpStatus.CREATED).body("Create new track success");
     }
 
     @PutMapping
-            
+
     public ResponseEntity<?> update(@Valid @ModelAttribute TrackDTO dto,
             @RequestPart(value = "img", required = false) MultipartFile img,
             @RequestPart(value = "track", required = false) MultipartFile track)
@@ -75,5 +88,22 @@ public class TrackController {
     public ResponseEntity<?> fetchAllWithPagination(@Filter Specification<Track> spec, Pageable pageable,
             @RequestParam(value = "category", required = false) String category) {
         return ResponseEntity.ok(this.trackService.fetchAllWithPagination(spec, pageable, category));
+    }
+
+    @GetMapping("/comments")
+    @ApiMessage("Fetch All Comment By Track ID")
+    public ResponseEntity<?> getAllCommentByTrackID(@Filter Specification<Comment> spec, Pageable pageable,
+            @RequestParam(value = "trackId", required = false) String trackIdStr) {
+        Long trackId = null;
+        if (trackIdStr != null) {
+            try {
+                trackId = Long.parseLong(trackIdStr);
+
+            } catch (NumberFormatException ne) {
+                return ResponseEntity.badRequest().body("Track ID not number!");
+            }
+        }
+        return ResponseEntity.ok(this.commentService.fetchAllWithPaginationDTO(spec, pageable, trackId));
+
     }
 }

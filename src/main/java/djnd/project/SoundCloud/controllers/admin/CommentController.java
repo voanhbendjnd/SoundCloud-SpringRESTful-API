@@ -46,7 +46,7 @@ public class CommentController {
     @GetMapping
     @ApiMessage("Get all comments")
     public ResponseEntity<?> fetchAll(@Filter Specification<Comment> spec, Pageable pageable) {
-        return ResponseEntity.ok(this.commentService.fetchAllWithPaginationDTO(spec, pageable));
+        return ResponseEntity.ok(this.commentService.fetchAllWithPaginationDTO(spec, pageable, null));
     }
 
     @DeleteMapping("/{id:[0-9]}")

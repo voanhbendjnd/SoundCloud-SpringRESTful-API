@@ -3,8 +3,10 @@ package djnd.project.SoundCloud.services;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import jakarta.persistence.criteria.Join;
 
 import djnd.project.SoundCloud.domain.entity.Comment;
+import djnd.project.SoundCloud.domain.entity.Track;
 import djnd.project.SoundCloud.domain.request.CommentDTO;
 import djnd.project.SoundCloud.domain.response.ResComment;
 import djnd.project.SoundCloud.domain.response.ResultPaginationDTO;
@@ -39,9 +41,17 @@ public class CommentService {
 
     }
 
-    public ResultPaginationDTO fetchAllWithPaginationDTO(Specification<Comment> spec, Pageable pageable) {
+    public ResultPaginationDTO fetchAllWithPaginationDTO(Specification<Comment> spec, Pageable pageable, Long trackId) {
         var res = new ResultPaginationDTO();
         var meta = new ResultPaginationDTO.Meta();
+        if (trackId != null) {
+            Specification<Comment> sp = (r, q, c) -> {
+                Join<Comment, Track> joinTrack = r.join("track");
+                return c.equal(joinTrack.get("id"), trackId);
+            };
+            spec = spec.and(sp);
+        }
+
         var page = this.commentRepository.findAll(spec, pageable);
         meta.setPage(pageable.getPageNumber() + 1);
         meta.setPageSize(pageable.getPageSize());
@@ -63,6 +73,21 @@ public class CommentService {
         res.setCreatedAt(comment.getCreatedAt());
         res.setUpdatedBy(comment.getUpdatedBy());
         res.setCreatedBy(comment.getCreatedBy());
+        res.setMoment(comment.getMoment());
+        var userComment = new ResComment.UserComment();
+        var trackComment = new ResComment.TrackComment();
+        var user = comment.getUser();
+        var track = comment.getTrack();
+        userComment.setAvatar(user.getAvatar());
+        userComment.setEmail(user.getEmail());
+        userComment.setId(user.getId());
+        userComment.setName(user.getName());
+        userComment.setRole(user.getRole().getName());
+        trackComment.setId(track.getId());
+        trackComment.setImgUrl(track.getImgUrl());
+        trackComment.setTitle(track.getTitle());
+        res.setUser(userComment);
+        res.setTrack(trackComment);
         return res;
     }
 
@@ -71,4 +96,5 @@ public class CommentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Comment ID", id));
         this.commentRepository.delete(comment);
     }
+
 }

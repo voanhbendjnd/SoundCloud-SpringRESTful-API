@@ -19,9 +19,6 @@ import djnd.project.SoundCloud.domain.response.ResultPaginationDTO;
 import djnd.project.SoundCloud.domain.response.TrackResponse;
 import djnd.project.SoundCloud.repositories.CategoryRepository;
 import djnd.project.SoundCloud.repositories.TrackRepository;
-import djnd.project.SoundCloud.repositories.UserRepository;
-import djnd.project.SoundCloud.utils.SecurityUtils;
-import djnd.project.SoundCloud.utils.error.DuplicateResourceException;
 import djnd.project.SoundCloud.utils.error.PermissionException;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
 import lombok.AccessLevel;
@@ -34,7 +31,6 @@ import lombok.experimental.FieldDefaults;
 public class TrackService {
     final TrackRepository trackRepository;
     final CategoryRepository categoryRepository;
-    final UserRepository userRepository;
     final FileService fileService;
     final UserService userService;
 
@@ -184,4 +180,5 @@ public class TrackService {
                 .orElseThrow(() -> new ResourceNotFoundException("Track ID", "" + id));
         return track;
     }
+
 }

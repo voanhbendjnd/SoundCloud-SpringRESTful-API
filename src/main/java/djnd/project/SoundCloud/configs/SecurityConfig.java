@@ -46,7 +46,6 @@ public class SecurityConfig {
             @Qualifier("corsConfigurationSource") CorsConfigurationSource corsConfig) throws Exception {
         String[] whiteList = {
                 "/",
-                "/api/v1/auth/**",
                 "/api/v1/**",
                 "/storage/**"
         };

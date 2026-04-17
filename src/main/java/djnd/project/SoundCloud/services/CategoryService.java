@@ -15,7 +15,6 @@ import lombok.experimental.FieldDefaults;
 
 import djnd.project.SoundCloud.domain.response.ResultPaginationDTO;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.data.domain.Pageable;
