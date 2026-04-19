@@ -11,14 +11,20 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import djnd.project.SoundCloud.domain.entity.Track;
+import djnd.project.SoundCloud.domain.entity.TrackLike;
 import djnd.project.SoundCloud.domain.request.TrackDTO;
+import djnd.project.SoundCloud.domain.response.ResTrackLike;
 import djnd.project.SoundCloud.domain.response.ResultPaginationDTO;
 import djnd.project.SoundCloud.domain.response.TrackResponse;
 import djnd.project.SoundCloud.repositories.CategoryRepository;
+import djnd.project.SoundCloud.repositories.TrackLikeRepository;
 import djnd.project.SoundCloud.repositories.TrackRepository;
+import djnd.project.SoundCloud.repositories.UserRepository;
+import djnd.project.SoundCloud.utils.SecurityUtils;
 import djnd.project.SoundCloud.utils.error.PermissionException;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
 import lombok.AccessLevel;
@@ -33,7 +39,8 @@ public class TrackService {
     final CategoryRepository categoryRepository;
     final FileService fileService;
     final UserService userService;
-
+    final UserRepository userRepository;
+    final TrackLikeRepository trackLikeRepository;
     @Value("${djnd.soundcloud.location.folder.img}")
     private String imgFolder;
     @Value("${djnd.soundcloud.location.folder.temp}")
@@ -109,7 +116,18 @@ public class TrackService {
     public TrackResponse fetchById(Long id) {
         var track = this.trackRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Track ID", "#" + id));
-        return convertToResponse(track);
+        var res = convertToResponse(track);
+        var emailOptional = SecurityUtils.getCurrentUserLogin();
+        if (emailOptional.isPresent()) {
+            var user = this.userRepository.findByEmailIgnoreCase(emailOptional.get());
+            if (user != null) {
+                res.setIsLiked(this.trackLikeRepository.existsByUserIdAndTrackId(user.getId(), id));
+
+            }
+        } else {
+            res.setIsLiked(false);
+        }
+        return res;
     }
 
     public ResultPaginationDTO fetchAllWithPagination(Specification<Track> spec, Pageable pageable, String category) {
@@ -179,6 +197,38 @@ public class TrackService {
         var track = this.trackRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Track ID", "" + id));
         return track;
+    }
+
+    @Transactional
+    public ResTrackLike handleCountLikeTrack(Long trackId) throws PermissionException {
+        var user = this.userService.getUserLoggedOrThrow();
+
+        boolean isCurrentlyLiked = this.trackLikeRepository.existsByUserIdAndTrackId(user.getId(), trackId);
+
+        if (!isCurrentlyLiked) {
+            TrackLike trackLike = new TrackLike();
+            trackLike.setTrack(this.trackRepository.getReferenceById(trackId));
+            trackLike.setUser(user);
+
+            this.trackLikeRepository.save(trackLike);
+            this.trackRepository.increamentCountLikes(trackId);
+        } else {
+            // var trackLike = this.trackLikeRepository.findByUserIdAndTrackId(user.getId(),
+            // trackId);
+            // if (trackLike == null)
+            // throw new ResourceNotFoundException("Track Like user ID and track ID are",
+            // user.getId() + " " + trackId);
+            // this.trackLikeRepository.delete(trackLike);
+
+            this.trackLikeRepository.deleteByUserIdAndTrackId(user.getId(), trackId);
+            this.trackRepository.decreamentCountLikes(trackId);
+        }
+
+        var res = new ResTrackLike();
+        res.setCountLikes(this.trackRepository.getCountLike(trackId));
+        res.setIsLiked(!isCurrentlyLiked);
+
+        return res;
     }
 
 }

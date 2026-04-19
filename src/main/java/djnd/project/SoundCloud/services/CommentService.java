@@ -83,6 +83,7 @@ public class CommentService {
         userComment.setId(user.getId());
         userComment.setName(user.getName());
         userComment.setRole(user.getRole().getName());
+        userComment.setType(user.getType());
         trackComment.setId(track.getId());
         trackComment.setImgUrl(track.getImgUrl());
         trackComment.setTitle(track.getTitle());

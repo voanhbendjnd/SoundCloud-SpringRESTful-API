@@ -2,6 +2,7 @@ package djnd.project.SoundCloud.controllers.admin;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Map;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -104,5 +105,13 @@ public class TrackController {
         }
         return ResponseEntity.ok(this.commentService.fetchAllWithPaginationDTO(spec, pageable, trackId));
 
+    }
+
+    @PostMapping("/likes")
+    @ApiMessage("Hanlde count likes track")
+    public ResponseEntity<?> handleCountLikesTrack(@RequestBody Map<String, Long> request)
+            throws PermissionException {
+        var trackId = request.get("trackId");
+        return ResponseEntity.status(HttpStatus.CREATED).body(this.trackService.handleCountLikeTrack(trackId));
     }
 }

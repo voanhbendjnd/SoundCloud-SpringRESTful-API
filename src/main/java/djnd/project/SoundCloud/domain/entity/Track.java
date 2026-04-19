@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.hibernate.annotations.ColumnDefault;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -40,8 +41,8 @@ public class Track {
     String description;
     String imgUrl;
     String trackUrl;
-    Integer countLike;
-    Long countPlay;
+    Integer countLike = 0;
+    Long countPlay = 0L;
     @ColumnDefault("false")
     boolean deleted;
     LocalDateTime createdAt, updatedAt;
@@ -51,8 +52,10 @@ public class Track {
     @ManyToOne
     @JoinColumn(name = "category_id")
     Category category;
-    @OneToMany(mappedBy = "track")
+    @OneToMany(mappedBy = "track", cascade = CascadeType.ALL)
     List<Comment> comments;
+    @OneToMany(mappedBy = "track", cascade = CascadeType.ALL)
+    List<TrackLike> trackLikes;
 
     @PrePersist
     public void handleBeforeCreateAt() {

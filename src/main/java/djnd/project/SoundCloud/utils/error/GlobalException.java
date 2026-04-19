@@ -1,10 +1,13 @@
 package djnd.project.SoundCloud.utils.error;
 
 import java.nio.file.AccessDeniedException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -13,12 +16,27 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import djnd.project.SoundCloud.domain.response.RestResponse;
 
 @RestControllerAdvice
 public class GlobalException {
+
+    // @ExceptionHandler(value = { HttpMessageNotReadableException.class })
+    // public ResponseEntity<?>
+    // handleHttpNotReadable(HttpMessageNotReadableException ex) {
+    // var status = HttpStatus.METHOD_NOT_ALLOWED.value();
+    // var res = new RestResponse<>();
+    // res.setMessage(ex.getMessage());
+    // res.setError("Method not allowed");
+    // res.setStatusCode(status);
+    // return ResponseEntity.status(status).body(res);
+
+    // }
+
     @ExceptionHandler(value = {
             BadCredentialsException.class
     })
@@ -82,7 +100,8 @@ public class GlobalException {
         return ResponseEntity.status(status).body(res);
     }
 
-    @ExceptionHandler(value = { HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class })
+    @ExceptionHandler(value = { HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class })
     public ResponseEntity<RestResponse<Object>> handleJsonParsingException(HttpMessageNotReadableException ex) {
         var status = HttpStatus.BAD_REQUEST.value();
         var res = new RestResponse<>();
@@ -123,7 +142,5 @@ public class GlobalException {
         res.setMessage(ex.getMessage());
         return ResponseEntity.status(status).body(res);
     }
-
-
 
 }

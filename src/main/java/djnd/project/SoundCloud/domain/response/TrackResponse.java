@@ -18,6 +18,7 @@ public class TrackResponse {
     Integer countLike;
     Long countPlay;
     Uploader uploader;
+    Boolean isLiked;
     LocalDateTime createdAt, updatedAt;
 
     @Data

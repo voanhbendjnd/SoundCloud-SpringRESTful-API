@@ -35,6 +35,7 @@ public class ResComment {
         String role;
         String name;
         String email;
+        String type;
     }
 
     @Setter

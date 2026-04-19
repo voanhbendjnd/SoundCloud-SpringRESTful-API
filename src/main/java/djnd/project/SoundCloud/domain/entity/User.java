@@ -52,6 +52,9 @@ public class User extends BaseEntity {
     @OneToMany(mappedBy = "user")
     List<CommentLike> commentLikes;
 
+    @OneToMany(mappedBy = "user")
+    List<TrackLike> trackLikes;
+
     public boolean isOTPRequired() {
         if (this.getOneTimePassword() == null) {
             return false;
