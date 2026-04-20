@@ -36,4 +36,12 @@ public interface TrackRepository extends JpaRepository<Track, Long>, JpaSpecific
 
     @Query(value = "select t.countLike from Track t where t.id = :trackId")
     Integer getCountLike(@Param("trackId") Long id);
+
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query(value = "update Track t set t.countPlay = t.countPlay + 1 where t.id = :trackId")
+    void increamentCountPlay(@Param("trackId") Long trackId);
+
+    @Query(value = "select t.countPlay from Track t where t.id = :trackId")
+    Long getCountPlayTrack(@Param("trackId") Long id);
 }

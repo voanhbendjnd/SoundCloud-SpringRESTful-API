@@ -49,7 +49,7 @@ public class TrackController {
     public ResponseEntity<?> createTrackByUser(@Valid @ModelAttribute TrackDTO dto,
             @RequestPart(value = "img", required = false) MultipartFile img,
             @RequestParam(value = "trackUrl", required = false) String trackFileName)
-            throws URISyntaxException, IOException, PermissionException {
+            throws URISyntaxException, Exception, PermissionException {
         this.trackService.createByUser(dto, img, trackFileName);
         return ResponseEntity.status(HttpStatus.CREATED).body("Create new track success");
     }
@@ -74,7 +74,7 @@ public class TrackController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
+    public ResponseEntity<?> delete(@PathVariable Long id) throws IOException {
         this.trackService.delete(id);
         return ResponseEntity.ok("Delete track success");
     }
@@ -113,5 +113,13 @@ public class TrackController {
             throws PermissionException {
         var trackId = request.get("trackId");
         return ResponseEntity.status(HttpStatus.CREATED).body(this.trackService.handleCountLikeTrack(trackId));
+    }
+
+    @PatchMapping("/view/increase")
+    @ApiMessage("Count play track")
+    public ResponseEntity<?> increamentCountPlayTrack(@RequestBody Map<String, Long> mpRequest) {
+        var trackId = mpRequest.get("trackId");
+        this.trackService.increamentCountPlayTrackToRedis(trackId);
+        return ResponseEntity.ok(null);
     }
 }

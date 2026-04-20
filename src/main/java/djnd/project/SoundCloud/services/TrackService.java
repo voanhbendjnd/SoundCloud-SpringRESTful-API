@@ -2,6 +2,9 @@ package djnd.project.SoundCloud.services;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import djnd.project.SoundCloud.domain.entity.Category;
 import djnd.project.SoundCloud.domain.entity.User;
@@ -10,6 +13,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,6 +25,7 @@ import djnd.project.SoundCloud.domain.request.TrackDTO;
 import djnd.project.SoundCloud.domain.response.ResTrackLike;
 import djnd.project.SoundCloud.domain.response.ResultPaginationDTO;
 import djnd.project.SoundCloud.domain.response.TrackResponse;
+import djnd.project.SoundCloud.redis.services.CountPlayTrack;
 import djnd.project.SoundCloud.repositories.CategoryRepository;
 import djnd.project.SoundCloud.repositories.TrackLikeRepository;
 import djnd.project.SoundCloud.repositories.TrackRepository;
@@ -41,6 +47,8 @@ public class TrackService {
     final UserService userService;
     final UserRepository userRepository;
     final TrackLikeRepository trackLikeRepository;
+    final CountPlayTrack countPlayTrack;
+    final JdbcTemplate jdbcTemplate;
     @Value("${djnd.soundcloud.location.folder.img}")
     private String imgFolder;
     @Value("${djnd.soundcloud.location.folder.temp}")
@@ -52,7 +60,8 @@ public class TrackService {
      * Save track audio before save infomation track!
      */
     public String uploadTempTrack(MultipartFile trackUrl) throws URISyntaxException, IOException {
-        return this.fileService.getFinalFileName(trackUrl, tempFolder);
+        // return this.fileService.getFinalFileName(trackUrl, tempFolder);
+        return this.fileService.uploadToTemp(trackUrl);
     }
 
     private Track toTrack(TrackDTO dto) {
@@ -70,19 +79,28 @@ public class TrackService {
         var track = this.toTrack(dto);
         var user = this.userService.getUserLoggedOrThrow();
         track.setUser(user);
-        track.setImgUrl(this.fileService.getFinalFileName(imgUrl, imgFolder));
-        track.setTrackUrl(this.fileService.getFinalFileName(trackUrl, audioFolder));
+        var imgUploadResult = this.fileService.uploadToCloudinary(imgUrl, imgFolder);
+        track.setImgUrl(imgUploadResult.getSecureUrl());
+        track.setImgPublicId(imgUploadResult.getPublicId());
+        var audioUploadResult = this.fileService.uploadToCloudinary(trackUrl, audioFolder);
+        track.setTrackUrl(audioUploadResult.getSecureUrl());
+        track.setTrackPublicId(audioUploadResult.getPublicId());
         this.trackRepository.save(track);
     }
 
     public void createByUser(TrackDTO dto, MultipartFile imgUrl, String trackFileName)
-            throws URISyntaxException, IOException, PermissionException {
+            throws URISyntaxException, Exception, PermissionException {
         var track = this.toTrack(dto);
         var user = this.userService.getUserLoggedOrThrow();
         track.setUser(user);
-        track.setImgUrl(this.fileService.getFinalFileName(imgUrl, imgFolder));
-        this.fileService.moveFolderToOtherFolder(trackFileName, tempFolder, audioFolder);
-        track.setTrackUrl(trackFileName);
+        var imgUploadResult = this.fileService.uploadToCloudinary(imgUrl, imgFolder);
+        track.setImgUrl(imgUploadResult.getSecureUrl());
+        track.setImgPublicId(imgUploadResult.getPublicId());
+        String cloudinaryUrl = this.fileService.moveCloudinaryFile(trackFileName, audioFolder);
+        String newPublicId = audioFolder + "/" + trackFileName.substring(trackFileName.lastIndexOf("/") + 1);
+        track.setTrackUrl(cloudinaryUrl);
+        track.setTrackPublicId(newPublicId);
+
         this.trackRepository.save(track);
     }
 
@@ -98,18 +116,30 @@ public class TrackService {
         track.setTitle(dto.getTitle());
 
         if (imgUrl != null && !imgUrl.isEmpty()) {
-            track.setImgUrl(this.fileService.getFinalFileName(imgUrl, imgFolder));
+            var imgUploadResult = this.fileService.uploadToCloudinary(imgUrl, imgFolder);
+            track.setImgUrl(imgUploadResult.getSecureUrl());
+            track.setImgPublicId(imgUploadResult.getPublicId());
         }
         if (trackUrl != null && !trackUrl.isEmpty()) {
-            track.setTrackUrl(this.fileService.getFinalFileName(trackUrl, audioFolder));
+            var audioUploadResult = this.fileService.uploadToCloudinary(trackUrl, audioFolder);
+            track.setTrackUrl(audioUploadResult.getSecureUrl());
+            track.setTrackPublicId(audioUploadResult.getPublicId());
         }
 
         this.trackRepository.save(track);
     }
 
-    public void delete(Long id) {
+    public void delete(Long id) throws IOException {
         var track = this.trackRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Track ID", "#" + id));
+
+        if (track.getImgPublicId() != null) {
+            this.fileService.deleteCloudinaryFile(track.getImgPublicId(), "image");
+        }
+        if (track.getTrackPublicId() != null) {
+            this.fileService.deleteCloudinaryFile(track.getTrackPublicId(), "video");
+        }
+
         this.trackRepository.delete(track);
     }
 
@@ -213,13 +243,6 @@ public class TrackService {
             this.trackLikeRepository.save(trackLike);
             this.trackRepository.increamentCountLikes(trackId);
         } else {
-            // var trackLike = this.trackLikeRepository.findByUserIdAndTrackId(user.getId(),
-            // trackId);
-            // if (trackLike == null)
-            // throw new ResourceNotFoundException("Track Like user ID and track ID are",
-            // user.getId() + " " + trackId);
-            // this.trackLikeRepository.delete(trackLike);
-
             this.trackLikeRepository.deleteByUserIdAndTrackId(user.getId(), trackId);
             this.trackRepository.decreamentCountLikes(trackId);
         }
@@ -231,4 +254,26 @@ public class TrackService {
         return res;
     }
 
+    public void increamentCountPlayTrackToRedis(Long trackId) {
+        this.countPlayTrack.saveViewToRedis(trackId);
+    }
+
+    /*
+     * fixedRate = 600000 after 10 minutes run
+     */
+    @Scheduled(fixedRate = 600000)
+    public void increamentCountPlayTrack() {
+        var viewMaps = this.countPlayTrack.getTrackIdAndCountView();
+        if (viewMaps == null)
+            return;
+        List<Object[]> batchArgs = new ArrayList<>();
+        for (Map.Entry<Object, Object> entry : viewMaps.entrySet()) {
+            Long trackId = Long.valueOf(entry.getKey().toString());
+            Long increasementViews = Long.valueOf(entry.getValue().toString());
+            batchArgs.add(new Object[] { trackId, increasementViews });
+        }
+        String query = "insert into tracks (id, count_play) values (?, ?) ON DUPLICATE KEY UPDATE count_play = count_play + VALUES(count_play)";
+        jdbcTemplate.batchUpdate(query, batchArgs);
+        this.countPlayTrack.deleteCountViewTrack();
+    }
 }

@@ -8,4 +8,5 @@ import lombok.Setter;
 public class ResTrackLike {
     private Integer countLikes;
     private Boolean isLiked;
+    private Long countPlays;
 }

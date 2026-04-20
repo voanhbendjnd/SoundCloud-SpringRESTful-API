@@ -41,6 +41,8 @@ public class Track {
     String description;
     String imgUrl;
     String trackUrl;
+    String trackPublicId;
+    String imgPublicId;
     Integer countLike = 0;
     Long countPlay = 0L;
     @ColumnDefault("false")

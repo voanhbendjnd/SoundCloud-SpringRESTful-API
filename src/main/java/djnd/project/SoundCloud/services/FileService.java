@@ -6,16 +6,24 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.scheduling.annotation.Scheduled;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.time.Instant;
+
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 
 import lombok.AccessLevel;
+import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
 @Service
@@ -23,6 +31,15 @@ import lombok.experimental.FieldDefaults;
 public class FileService {
     @Value("${djnd.upload-file.base-uri}")
     private String baseURI;
+
+    @Autowired
+    private Cloudinary cloudinary;
+
+    @Data
+    public static class UploadResult {
+        private String secureUrl;
+        private String publicId;
+    }
 
     public void createFolder(String folder) throws URISyntaxException, IOException {
         var path = Paths.get(baseURI + folder);
@@ -96,4 +113,62 @@ public class FileService {
         }
     }
 
+    public String uploadToTemp(MultipartFile file) throws IOException {
+        String originalName = file.getOriginalFilename();
+        if (originalName == null)
+            originalName = "filename";
+        String publicId = System.currentTimeMillis() + "-" + StringUtils.cleanPath(originalName);
+
+        Map params = ObjectUtils.asMap(
+                "public_id", publicId,
+                "folder", tempFolder,
+                "resource_type", "auto");
+
+        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), params);
+
+        return uploadResult.get("public_id").toString();
+    }
+
+    public String moveCloudinaryFile(String currentPublicId, String targetFolder) throws Exception {
+        String fileName = currentPublicId.substring(currentPublicId.lastIndexOf("/") + 1);
+        String newPublicId = targetFolder + "/" + fileName;
+        if (currentPublicId.equals(newPublicId)) {
+            Map resource = cloudinary.api().resource(newPublicId, ObjectUtils.asMap("resource_type", "video"));
+            return resource.get("secure_url").toString();
+        }
+        cloudinary.uploader().rename(currentPublicId, newPublicId, ObjectUtils.asMap(
+                "resource_type", "video"));
+        Map resource = cloudinary.api().resource(newPublicId, ObjectUtils.asMap("resource_type", "video"));
+        return resource.get("secure_url").toString();
+    }
+
+    public String getCloudinaryUrl(String publicId, String resourceType) {
+        return cloudinary.url().publicId(publicId).resourceType(resourceType).format("mp3").secure(true).toString();
+    }
+
+    public UploadResult uploadToCloudinary(MultipartFile file, String folder) throws IOException {
+        String originalName = file.getOriginalFilename();
+        if (originalName == null)
+            originalName = "filename";
+
+        String cleanName = StringUtils.cleanPath(originalName);
+        String publicId = System.currentTimeMillis() + "-" + cleanName;
+
+        Map params = ObjectUtils.asMap(
+                "public_id", publicId,
+                "folder", folder,
+                "resource_type", "auto");
+
+        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), params);
+
+        UploadResult result = new UploadResult();
+        result.setSecureUrl(uploadResult.get("secure_url").toString());
+        result.setPublicId(publicId);
+
+        return result;
+    }
+
+    public void deleteCloudinaryFile(String publicId, String resourceType) throws IOException {
+        cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", resourceType));
+    }
 }
