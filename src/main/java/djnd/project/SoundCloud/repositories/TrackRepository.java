@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import djnd.project.SoundCloud.domain.entity.Track;
-import djnd.project.SoundCloud.domain.it.TrackCountLikes;
+import djnd.project.SoundCloud.domain.it.UserNameAvatar;
 
 @Repository
 public interface TrackRepository extends JpaRepository<Track, Long>, JpaSpecificationExecutor<Track> {
@@ -44,4 +44,12 @@ public interface TrackRepository extends JpaRepository<Track, Long>, JpaSpecific
 
     @Query(value = "select t.countPlay from Track t where t.id = :trackId")
     Long getCountPlayTrack(@Param("trackId") Long id);
+
+    @Query(value = "select u.name as name, u.avatar as avatar from Track t join t.user u where t.id = :trackId")
+    UserNameAvatar getAvatarUploader(@Param("trackId") Long id);
+
+    boolean existsByTrackUrlAndId(String trackUrl, Long trackId);
+
+    @Query(value = "select t.trackUrl from Track t where t.id = :trackId")
+    String getUrlTrackById(@Param("trackId") Long trackId);
 }

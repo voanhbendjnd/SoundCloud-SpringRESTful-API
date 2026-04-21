@@ -1,5 +1,7 @@
 package djnd.project.SoundCloud.repositories;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -7,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import djnd.project.SoundCloud.domain.entity.Track;
 import djnd.project.SoundCloud.domain.entity.TrackLike;
 
 @Repository
@@ -27,4 +30,7 @@ public interface TrackLikeRepository extends JpaRepository<TrackLike, Long> {
     @Transactional
     @Query("DELETE FROM TrackLike tl WHERE tl.user.id = :userId AND tl.track.id = :trackId")
     void deleteByUserIdAndTrackId(@Param("userId") Long userId, @Param("trackId") Long trackId);
+
+    @Query(value = "select tl.track from TrackLike tl join tl.track t where tl.user.id = :userId", countQuery = "select count(tl) from TrackLike tl where tl.user.id = :userId")
+    Page<Track> getMyLikeTrack(@Param("userId") Long userId, Pageable pageable);
 }

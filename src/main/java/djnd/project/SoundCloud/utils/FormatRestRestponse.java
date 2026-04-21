@@ -30,19 +30,16 @@ public class FormatRestRestponse implements ResponseBodyAdvice<Object> {
             @NonNull MediaType selectedContentType,
             Class selectedConverterType, @NonNull ServerHttpRequest request, @NonNull ServerHttpResponse response) {
 
-        // Lấy đường dẫn request
         String path = request.getURI().getPath();
 
-        // Bỏ qua Swagger API Docs để tránh lỗi
         if (path.startsWith("/v3/api-docs") || path.startsWith("/swagger-ui")
                 || path.startsWith("/swagger-resources")) {
-            return body; // Trả về nguyên bản, không bọc vào RestResponse
+            return body;
         }
 
         HttpServletResponse servletResponse = ((ServletServerHttpResponse) response).getServletResponse();
         int status = servletResponse.getStatus();
 
-        // Nếu là String, Resource, ResourceRegion hoặc Collection<ResourceRegion> thì không bọc
         if (body instanceof String || body instanceof Resource || body instanceof ResourceRegion) {
             return body;
         }
@@ -55,7 +52,7 @@ public class FormatRestRestponse implements ResponseBodyAdvice<Object> {
         }
 
         if (status >= 400) {
-            return body; // Trả về lỗi gốc mà không bọc lại
+            return body;
         } else {
             RestResponse<Object> res = new RestResponse<>();
             res.setStatusCode(status);

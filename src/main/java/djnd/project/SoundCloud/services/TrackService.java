@@ -8,6 +8,7 @@ import java.util.Map;
 
 import djnd.project.SoundCloud.domain.entity.Category;
 import djnd.project.SoundCloud.domain.entity.User;
+import djnd.project.SoundCloud.domain.it.UserNameAvatar;
 import jakarta.persistence.criteria.Join;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -276,4 +277,44 @@ public class TrackService {
         jdbcTemplate.batchUpdate(query, batchArgs);
         this.countPlayTrack.deleteCountViewTrack();
     }
+
+    public ResultPaginationDTO getMyLikeTrack(Specification<Track> spec, Pageable pageable) throws PermissionException {
+        var res = new ResultPaginationDTO();
+        var meta = new ResultPaginationDTO.Meta();
+        var user = this.userService.getUserLoggedOrThrow();
+        var myTracks = this.trackLikeRepository.getMyLikeTrack(user.getId(), pageable);
+        // Specification<Track> sp = (r, q, c) -> {
+        // Join<Track, TrackLike> joinTrackLike = r.join("trackLike");
+        // return c.equal(joinTrackLike.get("user").get("id"), user.getId());
+        // };
+        meta.setPage(pageable.getPageNumber() + 1);
+        meta.setPageSize(pageable.getPageSize());
+        meta.setPages(myTracks.getTotalPages());
+        meta.setTotal(myTracks.getTotalElements());
+        res.setMeta(meta);
+        res.setResult(myTracks.getContent().stream().map(this::convertToResponse).toList());
+        return res;
+    }
+
+    public UserNameAvatar getUrlAvatarUploaderByTrackID(Long trackId) {
+        if (!this.trackRepository.existsById(trackId)) {
+            throw new ResourceNotFoundException("Track ID", trackId);
+        }
+        return this.trackRepository.getAvatarUploader(trackId);
+    }
+
+    public void checkIdAndAudioFile(Long trackId, Long trackIdLast) {
+        if (!this.trackRepository.existsById(trackId) || !trackIdLast.equals(trackId)) {
+            throw new ResourceNotFoundException("Track audio url", trackId);
+        }
+    }
+
+    public String getTrackUrlById(Long trackId) {
+        if (!this.trackRepository.existsById(trackId)) {
+            throw new ResourceNotFoundException("Track audio url", trackId);
+        }
+        return this.trackRepository.getUrlTrackById(trackId);
+
+    }
+
 }

@@ -38,7 +38,7 @@ public class SmartAuthenticationEntryPoint implements AuthenticationEntryPoint {
                 {
                     "error": "Unauthorized",
                     "message": "API can incorrect or access token invalid!",
-                "code": "JWT_INVALID"
+                    "code": "JWT_INVALID"
                 }
                 """;
         response.getWriter().write(errorMessage);

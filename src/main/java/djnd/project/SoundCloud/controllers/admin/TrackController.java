@@ -107,6 +107,12 @@ public class TrackController {
 
     }
 
+    @GetMapping("/avatar")
+    @ApiMessage("Get avatar uploader")
+    public ResponseEntity<?> getAvatarUrlUploader(@RequestParam("trackId") Long trackId) {
+        return ResponseEntity.ok(this.trackService.getUrlAvatarUploaderByTrackID(trackId));
+    }
+
     @PostMapping("/likes")
     @ApiMessage("Hanlde count likes track")
     public ResponseEntity<?> handleCountLikesTrack(@RequestBody Map<String, Long> request)
@@ -121,5 +127,36 @@ public class TrackController {
         var trackId = mpRequest.get("trackId");
         this.trackService.increamentCountPlayTrackToRedis(trackId);
         return ResponseEntity.ok(null);
+    }
+
+    @GetMapping("/likes")
+    @ApiMessage("Get track my like")
+    public ResponseEntity<?> getMyLikeTrack(@Filter Specification<Track> spec, Pageable pageable)
+            throws PermissionException {
+        return ResponseEntity.ok(this.trackService.getMyLikeTrack(spec, pageable));
+    }
+
+    @GetMapping("/isExists")
+    @ApiMessage("Exist URL track and ID")
+    public ResponseEntity<?> checkTrackExist(@RequestParam("trackId") Long trackId,
+            @RequestParam("lastId") Long trackIdLast) {
+
+        this.trackService.checkIdAndAudioFile(trackId, trackIdLast);
+        return ResponseEntity.ok(true);
+    }
+
+    @GetMapping("/audio")
+    @ApiMessage("Get url track by track Id")
+    public ResponseEntity<?> getURlTrack(@RequestParam("trackId") String trackIdStr) {
+        Long trackId = null;
+        if (trackIdStr != null) {
+            try {
+                trackId = Long.parseLong(trackIdStr);
+
+            } catch (NumberFormatException ne) {
+                return ResponseEntity.badRequest().body("Track ID not number!");
+            }
+        }
+        return ResponseEntity.ok(this.trackService.getTrackUrlById(trackId));
     }
 }
