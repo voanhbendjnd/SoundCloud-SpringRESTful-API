@@ -115,7 +115,7 @@ public class FileService {
         String originalName = file.getOriginalFilename();
         if (originalName == null)
             originalName = "filename";
-        String publicId = System.currentTimeMillis() + "-" + StringUtils.cleanPath(originalName);
+        String publicId = "t-" + System.currentTimeMillis();
 
         Map params = ObjectUtils.asMap(
                 "public_id", publicId,
@@ -149,8 +149,8 @@ public class FileService {
         if (originalName == null)
             originalName = "filename";
 
-        String cleanName = StringUtils.cleanPath(originalName);
-        String publicId = System.currentTimeMillis() + "-" + cleanName;
+        // String cleanName = StringUtils.cleanPath(originalName);
+        String publicId = "t-" + System.currentTimeMillis();
 
         Map params = ObjectUtils.asMap(
                 "public_id", publicId,
