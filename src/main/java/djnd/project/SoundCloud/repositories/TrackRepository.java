@@ -45,7 +45,7 @@ public interface TrackRepository extends JpaRepository<Track, Long>, JpaSpecific
     @Query(value = "select t.countPlay from Track t where t.id = :trackId")
     Long getCountPlayTrack(@Param("trackId") Long id);
 
-    @Query(value = "select u.name as name, u.avatar as avatar from Track t join t.user u where t.id = :trackId")
+    @Query(value = "select u.id as id, u.name as name, u.avatar as avatar from Track t join t.user u where t.id = :trackId")
     UserNameAvatar getAvatarUploader(@Param("trackId") Long id);
 
     boolean existsByTrackUrlAndId(String trackUrl, Long trackId);
