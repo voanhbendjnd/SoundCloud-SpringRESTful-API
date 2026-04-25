@@ -12,6 +12,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
@@ -43,6 +44,9 @@ public class Track {
     String trackUrl;
     String trackPublicId;
     String imgPublicId;
+    @Lob // Đánh dấu là dữ liệu lớn
+    @Column(name = "peaks", columnDefinition = "LONGTEXT")
+    private String peaks;
     Integer countLike = 0;
     Long countPlay = 0L;
     @ColumnDefault("false")

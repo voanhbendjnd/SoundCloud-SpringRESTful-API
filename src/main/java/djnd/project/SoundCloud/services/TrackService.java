@@ -50,6 +50,7 @@ public class TrackService {
     final TrackLikeRepository trackLikeRepository;
     final CountPlayTrack countPlayTrack;
     final JdbcTemplate jdbcTemplate;
+    final WaveformService waveformService;
     @Value("${djnd.soundcloud.location.folder.img}")
     private String imgFolder;
     @Value("${djnd.soundcloud.location.folder.temp}")
@@ -87,6 +88,9 @@ public class TrackService {
         track.setTrackUrl(audioUploadResult.getSecureUrl());
         track.setTrackPublicId(audioUploadResult.getPublicId());
         this.trackRepository.save(track);
+
+        // Generate peaks asynchronously
+        this.waveformService.generatePeaksForTrack(track.getId());
     }
 
     public void createByUser(TrackDTO dto, MultipartFile imgUrl, String trackFileName)
@@ -103,6 +107,9 @@ public class TrackService {
         track.setTrackPublicId(newPublicId);
 
         this.trackRepository.save(track);
+
+        // Generate peaks asynchronously
+        this.waveformService.generatePeaksForTrack(track.getId());
     }
 
     public void update(TrackDTO dto, MultipartFile imgUrl, MultipartFile trackUrl)
@@ -195,6 +202,7 @@ public class TrackService {
         result.setTitle(x.getTitle());
         result.setTrackUrl(this.getTrackUrlId(x.getTrackUrl()));
         result.setUpdatedAt(x.getUpdatedAt());
+        result.setPeaks(x.getPeaks());
         var user = x.getUser();
         var uploader = new TrackResponse.Uploader();
         uploader.setEmail(user.getEmail());

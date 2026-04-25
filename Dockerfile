@@ -8,7 +8,10 @@ COPY gradle ./gradle
 COPY build.gradle.kts .
 COPY settings.gradle.kts .
 
-# Download dependencies (giúp build nhanh hơn ở các lần sau)
+# Cấp quyền thực thi cho gradlew (quan trọng nếu bạn build trên Linux/Docker)
+RUN chmod +x gradlew
+
+# Download dependencies
 RUN ./gradlew dependencies --no-daemon
 
 # Copy source code và build file jar
@@ -19,12 +22,19 @@ RUN ./gradlew bootJar -x test --no-daemon
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
-# Copy file jar từ stage build sang
-# Gradle mặc định xuất file jar vào build/libs/
+# Cài đặt audiowaveform
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    && add-apt-repository ppa:chris-needham/ppa \
+    && apt-get update && apt-get install -y audiowaveform \
+    && rm -rf /var/lib/apt/lists/*
+
+# Fix lỗi copy: Gradle xuất file vào build/libs/, bỏ dòng COPY target/ dư thừa đi
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# Khai báo port của Spring Boot
+# Tạo thư mục tạm để xử lý nhạc (khớp với VOLUME trong docker-compose)
+RUN mkdir -p /app/uploads && chmod 777 /app/uploads
+
 EXPOSE 8080
 
-# Chạy ứng dụng
 ENTRYPOINT ["java", "-jar", "app.jar"]

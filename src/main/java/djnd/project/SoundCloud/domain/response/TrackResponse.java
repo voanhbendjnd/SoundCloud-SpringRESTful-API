@@ -15,6 +15,7 @@ public class TrackResponse {
     String category;
     String imgUrl;
     String trackUrl;
+    String peaks;
     Integer countLike;
     Long countPlay;
     Uploader uploader;
