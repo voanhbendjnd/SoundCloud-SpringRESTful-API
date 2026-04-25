@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+.DockerFile
+.backend.dockerFile
+/mysql_data/

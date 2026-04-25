@@ -1,7 +1,19 @@
 services:
+  mysql-db:
+    image: mysql:8.0
+    container_name: mysql-local
+    restart: always
+    environment:
+      MYSQL_DATABASE: soundcloud
+      MYSQL_ROOT_PASSWORD: 1607
+    ports:
+      - "3307:3306" # BẮT BUỘC: Để App ở ngoài gọi vào được
+    volumes:
+      - ./mysql_data:/var/lib/mysql # Lưu data vào thư mục ngay tại project
+
   redis-music:
     image: redis:alpine
-    container_name: redis-music
-    ports:
-      - "6379:6379"
+    container_name: redis-local
     restart: always
+    ports:
+      - "6379:6379" # BẮT BUỘC: Để App ở ngoài gọi vào được

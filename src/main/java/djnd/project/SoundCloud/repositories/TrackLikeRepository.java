@@ -1,5 +1,7 @@
 package djnd.project.SoundCloud.repositories;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -31,6 +33,12 @@ public interface TrackLikeRepository extends JpaRepository<TrackLike, Long> {
     @Query("DELETE FROM TrackLike tl WHERE tl.user.id = :userId AND tl.track.id = :trackId")
     void deleteByUserIdAndTrackId(@Param("userId") Long userId, @Param("trackId") Long trackId);
 
-    @Query(value = "select tl.track from TrackLike tl join tl.track t where tl.user.id = :userId", countQuery = "select count(tl) from TrackLike tl where tl.user.id = :userId")
+    @Query(value = "select tl.track from TrackLike tl join tl.track t where tl.user.id = :userId", countQuery = "select count(DISTINCT tl.track) from TrackLike tl where tl.user.id = :userId")
     Page<Track> getMyLikeTrack(@Param("userId") Long userId, Pageable pageable);
+
+    @Query(value = "SELECT t.* FROM tracks t WHERE EXISTS (SELECT 1 FROM track_likes tl WHERE tl.track_id = t.id AND tl.user_id = :userId) ORDER BY t.created_at DESC", countQuery = "SELECT COUNT(*) FROM tracks t WHERE EXISTS (SELECT 1 FROM track_likes tl WHERE tl.track_id = t.id AND tl.user_id = :userId)", nativeQuery = true)
+    Page<Track> getMyLikeTrackNative(Long userId, Pageable pageable);
+
+    @Query("SELECT tl.track.id FROM TrackLike tl WHERE tl.user.id = :userId AND tl.track.id IN :trackIds")
+    List<Long> findLikedTrackIds(@Param("userId") Long userId, @Param("trackIds") List<Long> trackIds);
 }

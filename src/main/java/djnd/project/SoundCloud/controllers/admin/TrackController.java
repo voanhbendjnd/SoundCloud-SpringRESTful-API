@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,8 +36,14 @@ public class TrackController {
 
     @GetMapping("/users/{id}")
     public ResponseEntity<?> getMyTrackUploaded(@Filter Specification<Track> spec, Pageable pageable,
-            @PathVariable("id") Long userId) {
-        return ResponseEntity.ok(this.trackService.getMyTrackUploaded(spec, pageable, userId));
+            @PathVariable("id") String userIdStr) {
+        try {
+            Long userId = Long.parseLong(userIdStr);
+            return ResponseEntity.ok(this.trackService.getMyTrackUploaded(spec, pageable, userId));
+
+        } catch (NumberFormatException ne) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("ID must be number!");
+        }
     }
 
     @PostMapping("/upload-temp")
@@ -107,10 +114,11 @@ public class TrackController {
 
     }
 
-    @GetMapping("/avatar")
+    @GetMapping("/uploader")
     @ApiMessage("Get avatar uploader")
-    public ResponseEntity<?> getAvatarUrlUploader(@RequestParam("trackId") Long trackId) {
-        return ResponseEntity.ok(this.trackService.getUrlAvatarUploaderByTrackID(trackId));
+    public ResponseEntity<?> getUploader(@RequestParam("trackId") Long trackId,
+            @RequestParam("trackUrl") String trackUrl, @RequestParam("lastId") Long lastId) {
+        return ResponseEntity.ok(this.trackService.getUploader(trackId, lastId, trackUrl));
     }
 
     @PostMapping("/likes")
@@ -134,15 +142,6 @@ public class TrackController {
     public ResponseEntity<?> getMyLikeTrack(@Filter Specification<Track> spec, Pageable pageable)
             throws PermissionException {
         return ResponseEntity.ok(this.trackService.getMyLikeTrack(spec, pageable));
-    }
-
-    @GetMapping("/isExists")
-    @ApiMessage("Exist URL track and ID")
-    public ResponseEntity<?> checkTrackExist(@RequestParam("trackId") Long trackId,
-            @RequestParam("lastId") Long trackIdLast) {
-
-        this.trackService.checkIdAndAudioFile(trackId, trackIdLast);
-        return ResponseEntity.ok(true);
     }
 
     @GetMapping("/audio")

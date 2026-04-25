@@ -28,5 +28,6 @@ public class TrackResponse {
         String email;
         String name;
         String role;
+        String avatar;
     }
 }

@@ -8,7 +8,7 @@ import java.util.Map;
 
 import djnd.project.SoundCloud.domain.entity.Category;
 import djnd.project.SoundCloud.domain.entity.User;
-import djnd.project.SoundCloud.domain.it.UserNameAvatar;
+import djnd.project.SoundCloud.domain.it.TrackUploader;
 import jakarta.persistence.criteria.Join;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -193,7 +193,7 @@ public class TrackService {
         result.setId(x.getId());
         result.setImgUrl(x.getImgUrl());
         result.setTitle(x.getTitle());
-        result.setTrackUrl(x.getTrackUrl());
+        result.setTrackUrl(this.getTrackUrlId(x.getTrackUrl()));
         result.setUpdatedAt(x.getUpdatedAt());
         var user = x.getUser();
         var uploader = new TrackResponse.Uploader();
@@ -282,7 +282,7 @@ public class TrackService {
         var res = new ResultPaginationDTO();
         var meta = new ResultPaginationDTO.Meta();
         var user = this.userService.getUserLoggedOrThrow();
-        var myTracks = this.trackLikeRepository.getMyLikeTrack(user.getId(), pageable);
+        var myTracks = this.trackLikeRepository.getMyLikeTrackNative(user.getId(), pageable);
         // Specification<Track> sp = (r, q, c) -> {
         // Join<Track, TrackLike> joinTrackLike = r.join("trackLike");
         // return c.equal(joinTrackLike.get("user").get("id"), user.getId());
@@ -292,21 +292,45 @@ public class TrackService {
         meta.setPages(myTracks.getTotalPages());
         meta.setTotal(myTracks.getTotalElements());
         res.setMeta(meta);
-        res.setResult(myTracks.getContent().stream().map(this::convertToResponse).toList());
+        var resMyTracks = myTracks.getContent().stream().map(this::convertToResponse).toList();
+        for (var x : resMyTracks) {
+            x.setIsLiked(true);
+        }
+        // var itrackIds = this.trackLikeRepository.findLikedTrackIds(user.getId(),
+        // resMyTracks.stream().map(x -> x.getId()).toList());
+        res.setResult(resMyTracks);
         return res;
     }
 
-    public UserNameAvatar getUrlAvatarUploaderByTrackID(Long trackId) {
-        if (!this.trackRepository.existsById(trackId)) {
+    public TrackResponse getUploader(Long trackId, Long lastId, String trackUrl) {
+        if (!this.checkIdAndAudioFile(trackId, lastId, trackUrl)) {
             throw new ResourceNotFoundException("Track ID", trackId);
         }
-        return this.trackRepository.getAvatarUploader(trackId);
+        var uploaderTrackUrl = this.trackRepository.getUploader(lastId);
+        var res = new TrackResponse();
+        var uploader = new TrackResponse.Uploader();
+        uploader.setAvatar(uploaderTrackUrl.getAvatar());
+        uploader.setName(uploaderTrackUrl.getName());
+        uploader.setId(uploaderTrackUrl.getId());
+        res.setUploader(uploader);
+        return res;
     }
 
-    public void checkIdAndAudioFile(Long trackId, Long trackIdLast) {
-        if (!this.trackRepository.existsById(trackId) || !trackIdLast.equals(trackId)) {
-            throw new ResourceNotFoundException("Track audio url", trackId);
+    private String getTrackUrlId(String trackUrl) {
+        var keyCut = "/upload";
+        var index = trackUrl.indexOf(keyCut);
+        if (index != -1) {
+            return trackUrl.substring(index + keyCut.length());
         }
+        throw new ResourceNotFoundException("Track URL", trackUrl);
+    }
+
+    public boolean checkIdAndAudioFile(Long trackId, Long trackIdLast, String trackUrl) {
+        if (!this.trackRepository.existsByTrackUrlAndId("https://res.cloudinary.com/dddppjhly/video/upload" + trackUrl,
+                trackId) || !trackIdLast.equals(trackId)) {
+            return false;
+        }
+        return true;
     }
 
     public String getTrackUrlById(Long trackId) {
