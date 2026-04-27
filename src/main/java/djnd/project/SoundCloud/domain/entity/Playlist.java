@@ -2,13 +2,15 @@ package djnd.project.SoundCloud.domain.entity;
 
 import java.util.List;
 
+import org.hibernate.annotations.BatchSize;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -28,9 +30,10 @@ public class Playlist extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     User user;
-    @ManyToMany
-    @JoinTable(name = " playlist_tracks", joinColumns = @JoinColumn(name = "playlist_id"), inverseJoinColumns = @JoinColumn(name = "track_id"))
-    List<Track> tracks;
+    // get all playlist_track where playlist id in (1,2,3,...)
+    @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 20)
+    List<PlaylistTrack> playlistTracks;
     Integer totalTracks;
     Boolean isPublic;
 

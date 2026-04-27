@@ -8,7 +8,6 @@ import java.util.Map;
 
 import djnd.project.SoundCloud.domain.entity.Category;
 import djnd.project.SoundCloud.domain.entity.User;
-import djnd.project.SoundCloud.domain.it.SearchInterface;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;

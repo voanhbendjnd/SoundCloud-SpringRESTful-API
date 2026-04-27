@@ -21,11 +21,11 @@ public class ResPlaylist {
     User user;
     Long id;
     Integer totalTracks;
-    List<PlaylistTrack> playlistTracks;
+    List<ResPlaylistTrack> playlistTracks;
 
     @Getter
     @Setter
-    public static class PlaylistTrack {
+    public static class ResPlaylistTrack {
         Long id;
         String title;
         Long countPlays;

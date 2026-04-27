@@ -1,13 +1,20 @@
 package djnd.project.SoundCloud.services;
 
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import djnd.project.SoundCloud.domain.entity.Playlist;
+import djnd.project.SoundCloud.domain.entity.PlaylistTrack;
+import djnd.project.SoundCloud.domain.request.AddTrackToPlaylistDTO;
 import djnd.project.SoundCloud.domain.request.PlaylistDTO;
+import djnd.project.SoundCloud.domain.response.ResAddToPlaylist;
 import djnd.project.SoundCloud.domain.response.ResPlaylist;
 import djnd.project.SoundCloud.repositories.PlaylistRepository;
+import djnd.project.SoundCloud.repositories.PlaylistTrackRepository;
 import djnd.project.SoundCloud.repositories.TrackRepository;
 import djnd.project.SoundCloud.utils.error.PermissionException;
+import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -20,6 +27,7 @@ public class PlayListService {
     UserService userService;
     TrackRepository trackRepository;
     TrackService trackService;
+    PlaylistTrackRepository playlistTrackRepository;
 
     public ResPlaylist createNewPlaylist(PlaylistDTO dto) throws PermissionException {
         var playlist = new Playlist();
@@ -27,14 +35,69 @@ public class PlayListService {
         playlist.setIsPublic(dto.getIsPublic());
         playlist.setTitle(dto.getTitle());
         playlist.setUser(currentUserLogin);
+
         if (dto.getTrackIds() != null && !dto.getTrackIds().isEmpty()) {
             var tracks = this.trackRepository.findByIdIn(dto.getTrackIds());
             if (!tracks.isEmpty()) {
-                playlist.setTracks(tracks);
+                playlist.setPlaylistTracks(tracks.stream().map(x -> {
+                    var playlistTrack = new PlaylistTrack();
+                    playlistTrack.setPlaylist(playlist);
+                    playlistTrack.setTrack(x);
+                    playlistTrack.setIsAdded(true);
+                    return playlistTrack;
+                }).toList());
+                playlist.setTotalTracks(tracks.size());
             }
         }
         var savePlaylist = this.playlistRepository.save(playlist);
+
         return this.toResPlaylist(this.playlistRepository.findWithDetailsById(savePlaylist.getId()).get());
+    }
+
+    @Transactional
+    public ResAddToPlaylist handleOnClickTrackToPlaylist(AddTrackToPlaylistDTO dto, Long trackId) {
+        var playlist = this.playlistRepository.findWithDetailsById(dto.getPlaylistId())
+                .orElseThrow(() -> new ResourceNotFoundException("Playlist ID", dto.getPlaylistId()));
+        boolean existsTrackInPlaylist = this.playlistTrackRepository.existsByPlaylistIdAndTrackId(dto.getPlaylistId(),
+                trackId);
+
+        if (dto.getIsAdded() && !existsTrackInPlaylist) {
+            var trackProxy = this.trackRepository.getReferenceById(trackId);
+            var playlistTrack = new PlaylistTrack();
+            playlistTrack.setPlaylist(playlist);
+            playlistTrack.setTrack(trackProxy);
+            playlistTrack.setIsAdded(dto.getIsAdded());
+            this.playlistTrackRepository.save(playlistTrack);
+            this.playlistRepository.incremementTrackInPlaylist(playlist.getId(), 1);
+            var currentTotalTracks = playlist.getTotalTracks() + 1;
+            playlist.setTotalTracks(currentTotalTracks);
+            return this.toResAddToPlaylist(playlist.getId(), existsTrackInPlaylist, currentTotalTracks);
+        }
+        if (!dto.getIsAdded()) {
+            var playlistTrackDB = this.playlistTrackRepository.findByPlaylistIdAndTrackId(dto.getPlaylistId(),
+                    trackId);
+            if (playlistTrackDB != null) {
+                this.playlistRepository.decremementTrackInPlaylist(playlist.getId(), 1);
+                this.playlistTrackRepository.deleteByPlaylistIdAndTrackId(playlist.getId(), trackId);
+                var currentTotalTracks = playlist.getTotalTracks() - 1;
+                if (currentTotalTracks < 0) {
+                    throw new DataAccessResourceFailureException("Data Access Resource Failure!");
+                }
+                playlist.setTotalTracks(currentTotalTracks);
+
+                return this.toResAddToPlaylist(playlist.getId(), existsTrackInPlaylist, currentTotalTracks);
+            }
+        }
+
+        throw new ResourceNotFoundException("Action invalid", "nil");
+    }
+
+    private ResAddToPlaylist toResAddToPlaylist(Long playlistId, boolean isAdded, int total) {
+        var res = new ResAddToPlaylist();
+        res.setId(playlistId);
+        res.setIsAdded(!isAdded);
+        res.setTotalTracks(total);
+        return res;
     }
 
     public ResPlaylist toResPlaylist(Playlist playlist) {
@@ -43,7 +106,8 @@ public class PlayListService {
         res.setCreatedBy(playlist.getCreatedBy());
         res.setDescription(playlist.getDescription());
         res.setId(playlist.getId());
-        res.setImgUrl(playlist.getImgUrl());
+        res.setImgUrl(playlist.getImgUrl() != null ? playlist.getImgUrl()
+                : playlist.getPlaylistTracks().getLast().getTrack().getImgUrl());
         res.setIsPublic(playlist.getIsPublic());
         res.setTitle(playlist.getTitle());
         res.setTotalTracks(playlist.getTotalTracks());
@@ -56,25 +120,25 @@ public class PlayListService {
         userPlaylist.setName(user.getName());
         userPlaylist.setRole(user.getRole().getName());
         res.setUser(userPlaylist);
-        var playListTracks = playlist.getTracks().stream().map(x -> {
-            var track = new ResPlaylist.PlaylistTrack();
-            track.setId(x.getId());
-            track.setCountLikes(x.getCountLike());
-            track.setCountPlays(x.getCountPlay());
-            track.setImgUrl(x.getImgUrl());
-            track.setTitle(x.getTitle());
-            track.setTrackUrl(this.trackService.getResTrackUrlId(x.getTrackUrl()));
-            var uploader = x.getUser();
-            var resUploader = new ResPlaylist.PlaylistTrack.Uploader();
-            resUploader.setId(uploader.getId());
+        var playlistTracks = playlist.getPlaylistTracks().stream().map(x -> {
+            var resPlaylistTrack = new ResPlaylist.ResPlaylistTrack();
+            var track = x.getTrack();
+            resPlaylistTrack.setId(track.getId());
+            resPlaylistTrack.setCountLikes(track.getCountLike());
+            resPlaylistTrack.setCountPlays(track.getCountPlay());
+            resPlaylistTrack.setImgUrl(track.getImgUrl());
+            resPlaylistTrack.setTitle(track.getTitle());
+            resPlaylistTrack.setTrackUrl(this.trackService.getResTrackUrlId(track.getTrackUrl()));
+            var uploader = track.getUser();
+            var resUploader = new ResPlaylist.ResPlaylistTrack.Uploader();
             resUploader.setAvatar(uploader.getAvatar());
+            resUploader.setId(uploader.getId());
             resUploader.setName(uploader.getName());
-            resUploader.setRole(uploader.getRole().getName());
-            track.setUploader(resUploader);
-            return track;
+            resPlaylistTrack.setUploader(resUploader);
+            return resPlaylistTrack;
         }).toList();
-        res.setPlaylistTracks(playListTracks);
-        res.setTotalTracks(playListTracks.size());
+        res.setPlaylistTracks(playlistTracks);
+        res.setTotalTracks(playlistTracks.size());
         return res;
     }
 }

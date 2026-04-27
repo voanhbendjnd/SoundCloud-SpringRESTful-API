@@ -3,6 +3,7 @@ package djnd.project.SoundCloud.domain.entity;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.ColumnDefault;
 
 import jakarta.persistence.CascadeType;
@@ -13,7 +14,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
@@ -33,6 +33,7 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Table(name = "tracks")
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@BatchSize(size = 20)
 public class Track {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,7 +46,7 @@ public class Track {
     String trackUrl;
     String trackPublicId;
     String imgPublicId;
-    @Lob // Đánh dấu là dữ liệu lớn
+    @Lob
     @Column(name = "peaks", columnDefinition = "LONGTEXT")
     private String peaks;
     Integer countLike = 0;
@@ -63,8 +64,8 @@ public class Track {
     List<Comment> comments;
     @OneToMany(mappedBy = "track", cascade = CascadeType.ALL)
     List<TrackLike> trackLikes;
-    @ManyToMany(mappedBy = "tracks")
-    List<Playlist> playlists;
+    @OneToMany(mappedBy = "track", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<PlaylistTrack> playlistTracks;
 
     @PrePersist
     public void handleBeforeCreateAt() {
