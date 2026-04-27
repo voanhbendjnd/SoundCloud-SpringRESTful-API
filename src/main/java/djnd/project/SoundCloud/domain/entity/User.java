@@ -3,6 +3,7 @@ package djnd.project.SoundCloud.domain.entity;
 import java.util.Date;
 import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
@@ -43,17 +44,20 @@ public class User extends BaseEntity {
     static final long OTP_VALID_DURATION = 5 * 60 * 1000; // 5 minutes
     boolean accept;
     String avatar;
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Track> tracks;
     Boolean status = true;
     String username;
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Comment> comments;
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     List<CommentLike> commentLikes;
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     List<TrackLike> trackLikes;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<Playlist> playlists;
 
     public boolean isOTPRequired() {
         if (this.getOneTimePassword() == null) {

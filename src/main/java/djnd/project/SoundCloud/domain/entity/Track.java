@@ -13,6 +13,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
@@ -62,6 +63,8 @@ public class Track {
     List<Comment> comments;
     @OneToMany(mappedBy = "track", cascade = CascadeType.ALL)
     List<TrackLike> trackLikes;
+    @ManyToMany(mappedBy = "tracks")
+    List<Playlist> playlists;
 
     @PrePersist
     public void handleBeforeCreateAt() {

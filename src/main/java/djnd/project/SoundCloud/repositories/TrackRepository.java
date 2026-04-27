@@ -1,5 +1,11 @@
 package djnd.project.SoundCloud.repositories;
 
+import java.util.List;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -9,11 +15,15 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import djnd.project.SoundCloud.domain.entity.Track;
+import djnd.project.SoundCloud.domain.it.SearchInterface;
 import djnd.project.SoundCloud.domain.it.TrackUploader;
 
 @Repository
 public interface TrackRepository extends JpaRepository<Track, Long>, JpaSpecificationExecutor<Track> {
     boolean existsByTitleAndIdNot(String title, Long id);
+
+    @EntityGraph(attributePaths = { "user" })
+    List<Track> findByIdIn(List<Long> trackIds);
 
     boolean existsByTitle(String tile);
 
@@ -52,4 +62,12 @@ public interface TrackRepository extends JpaRepository<Track, Long>, JpaSpecific
 
     @Query(value = "select t.trackUrl from Track t where t.id = :trackId")
     String getUrlTrackById(@Param("trackId") Long trackId);
+
+    @Query(value = "select t.id as id, t.title as title, t.imgUrl as imgUrl, u.name as name, t.trackUrl as trackUrl from Track t join t.user u where lower(t.title) like lower(concat('%', :key, '%')) or lower(u.name) like lower(concat('%', :key, '%'))")
+    List<SearchInterface> searchByKey(@Param("key") String key, Pageable pageable);
+
+    @Override
+    @EntityGraph(attributePaths = { "user" })
+    Page<Track> findAll(Specification<Track> spec, Pageable pageable);
+
 }

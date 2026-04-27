@@ -8,10 +8,14 @@ import java.util.Map;
 
 import djnd.project.SoundCloud.domain.entity.Category;
 import djnd.project.SoundCloud.domain.entity.User;
-import djnd.project.SoundCloud.domain.it.TrackUploader;
+import djnd.project.SoundCloud.domain.it.SearchInterface;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -23,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 import djnd.project.SoundCloud.domain.entity.Track;
 import djnd.project.SoundCloud.domain.entity.TrackLike;
 import djnd.project.SoundCloud.domain.request.TrackDTO;
+import djnd.project.SoundCloud.domain.response.ResSearch;
 import djnd.project.SoundCloud.domain.response.ResTrackLike;
 import djnd.project.SoundCloud.domain.response.ResultPaginationDTO;
 import djnd.project.SoundCloud.domain.response.TrackResponse;
@@ -168,25 +173,37 @@ public class TrackService {
         return res;
     }
 
-    public ResultPaginationDTO fetchAllWithPagination(Specification<Track> spec, Pageable pageable, String category) {
+    public ResultPaginationDTO fetchAllWithPagination(Specification<Track> spec, Pageable pageable, String category,
+            String qStr) {
         var res = new ResultPaginationDTO();
         var meta = new ResultPaginationDTO.Meta();
-
         if (category != null && !category.isEmpty()) {
-            Specification<Track> categorySpec = (root, query, cb) -> {
-                Join<Track, Category> joinCategory = root.join("category");
+            spec = spec.and((root, query, cb) -> {
+                Join<Track, Category> joinCategory = root.join("category", JoinType.LEFT);
                 return cb.equal(joinCategory.get("name"), category);
-            };
-            spec = spec.and(categorySpec);
+            });
         }
+        if (qStr != null && !qStr.isBlank()) {
+            spec = spec.and((root, query, cb) -> {
+                query.distinct(true);
+                String searchPattern = "%" + qStr.toLowerCase() + "%";
+                Predicate titlePredicate = cb.like(cb.lower(root.get("title")), searchPattern);
+                Join<Track, User> userJoin = root.join("user", JoinType.LEFT);
+                Predicate userPredicate = cb.like(cb.lower(userJoin.get("name")), searchPattern);
 
+                return cb.or(titlePredicate, userPredicate);
+            });
+        }
         var page = this.trackRepository.findAll(spec, pageable);
         meta.setPage(pageable.getPageNumber() + 1);
         meta.setPageSize(pageable.getPageSize());
         meta.setPages(page.getTotalPages());
         meta.setTotal(page.getTotalElements());
         res.setMeta(meta);
-        res.setResult(page.getContent().stream().map(this::convertToResponse).toList());
+        res.setResult(page.getContent().stream()
+                .map(this::convertToResponse)
+                .toList());
+
         return res;
     }
 
@@ -200,7 +217,7 @@ public class TrackService {
         result.setId(x.getId());
         result.setImgUrl(x.getImgUrl());
         result.setTitle(x.getTitle());
-        result.setTrackUrl(this.getTrackUrlId(x.getTrackUrl()));
+        result.setTrackUrl(this.getResTrackUrlId(x.getTrackUrl()));
         result.setUpdatedAt(x.getUpdatedAt());
         result.setPeaks(x.getPeaks());
         var user = x.getUser();
@@ -324,7 +341,7 @@ public class TrackService {
         return res;
     }
 
-    private String getTrackUrlId(String trackUrl) {
+    public String getResTrackUrlId(String trackUrl) {
         var keyCut = "/upload";
         var index = trackUrl.indexOf(keyCut);
         if (index != -1) {
@@ -346,6 +363,20 @@ public class TrackService {
             throw new ResourceNotFoundException("Track audio url", trackId);
         }
         return this.trackRepository.getUrlTrackById(trackId);
+
+    }
+
+    public List<ResSearch> search(String key) {
+        Pageable pageable = PageRequest.of(0, 9);
+        return this.trackRepository.searchByKey(key, pageable).stream().map(x -> {
+            var res = new ResSearch();
+            res.setId(x.getId());
+            res.setImgUrl(x.getImgUrl());
+            res.setName(x.getName());
+            res.setTitle(x.getTitle());
+            res.setTrackUrl(this.getResTrackUrlId(x.getTrackUrl()));
+            return res;
+        }).toList();
 
     }
 
