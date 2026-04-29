@@ -18,11 +18,9 @@ public class UserDetailCustoms implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        var user = this.userRepository.findByEmailIgnoreCase(username);
-        if (user != null) {
-            return new CustomUserDetails(user);
-        }
-        throw new UsernameNotFoundException("Username or Password incorrect!");
+        var user = this.userRepository.findWithDetailByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Username or Password incorrect!"));
+        return new CustomUserDetails(user);
     }
 
 }

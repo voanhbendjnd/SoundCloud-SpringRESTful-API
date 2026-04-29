@@ -159,17 +159,21 @@ public class TrackService {
         var track = this.trackRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Track ID", "#" + id));
         var res = convertToResponse(track);
-        var emailOptional = SecurityUtils.getCurrentUserLogin();
-        if (emailOptional.isPresent()) {
-            var user = this.userRepository.findByEmailIgnoreCase(emailOptional.get());
-            if (user != null) {
-                res.setIsLiked(this.trackLikeRepository.existsByUserIdAndTrackId(user.getId(), id));
-
-            }
+        var userId = SecurityUtils.getCurrentUserIdOrNull();
+        if (userId != null) {
+            res.setIsLiked(this.trackLikeRepository.existsByUserIdAndTrackId(userId, id));
+            return res;
         } else {
-            res.setIsLiked(false);
+            return res;
         }
-        return res;
+    }
+
+    public boolean isLikedWhenLogin(Long id) throws PermissionException {
+        var userId = SecurityUtils.getCurrentUserIdOrNull();
+        if (userId != null) {
+            return this.trackLikeRepository.existsByUserIdAndTrackId(userId, id);
+        }
+        throw new PermissionException("You do not have permission!");
     }
 
     public ResultPaginationDTO fetchAllWithPagination(Specification<Track> spec, Pageable pageable, String category,
@@ -307,13 +311,28 @@ public class TrackService {
         var meta = new ResultPaginationDTO.Meta();
         var user = this.userService.getUserLoggedOrThrow();
         var myTracks = this.trackLikeRepository.getMyLikeTrackNative(user.getId(), pageable);
+
+        int requestedPage = pageable.getPageNumber() + 1;
+        int totalPages = myTracks.getTotalPages();
+
+        // Validate page bounds
+        if (requestedPage > totalPages && totalPages > 0) {
+            meta.setPage(requestedPage);
+            meta.setPageSize(pageable.getPageSize());
+            meta.setPages(totalPages);
+            meta.setTotal(myTracks.getTotalElements());
+            res.setMeta(meta);
+            res.setResult(java.util.Collections.emptyList());
+            return res;
+        }
+
         // Specification<Track> sp = (r, q, c) -> {
         // Join<Track, TrackLike> joinTrackLike = r.join("trackLike");
         // return c.equal(joinTrackLike.get("user").get("id"), user.getId());
         // };
-        meta.setPage(pageable.getPageNumber() + 1);
+        meta.setPage(requestedPage);
         meta.setPageSize(pageable.getPageSize());
-        meta.setPages(myTracks.getTotalPages());
+        meta.setPages(totalPages);
         meta.setTotal(myTracks.getTotalElements());
         res.setMeta(meta);
         var resMyTracks = myTracks.getContent().stream().map(this::convertToResponse).toList();

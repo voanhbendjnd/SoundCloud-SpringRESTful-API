@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -27,7 +28,7 @@ import com.nimbusds.jose.util.Base64;
 
 import djnd.project.SoundCloud.domain.ResLoginDTO;
 import djnd.project.SoundCloud.domain.entity.Permission;
-import djnd.project.SoundCloud.repositories.RoleRepository;
+import djnd.project.SoundCloud.domain.entity.Role;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 
@@ -36,11 +37,9 @@ import lombok.experimental.FieldDefaults;
 public class SecurityUtils {
     final JwtEncoder jwtEncoder;
     public static final MacAlgorithm JWT_ALGORITHM = MacAlgorithm.HS512;
-    final RoleRepository roleRepository;
 
-    public SecurityUtils(JwtEncoder jwtEncoder, RoleRepository roleRepository) {
+    public SecurityUtils(JwtEncoder jwtEncoder) {
         this.jwtEncoder = jwtEncoder;
-        this.roleRepository = roleRepository;
     }
 
     @Value("${djnd.jwt.base64-secret}")
@@ -65,14 +64,13 @@ public class SecurityUtils {
         }
     }
 
-    public String createAccessToken(String email, ResLoginDTO dto, String sessionId) {
+    public String createAccessToken(String email, ResLoginDTO dto, String sessionId, Role role) {
         var userToken = new ResLoginDTO.UserInsideToken();
         userToken.setId(dto.getUser().getId());
         userToken.setEmail(dto.getUser().getEmail());
         userToken.setName(dto.getUser().getName());
         Instant now = Instant.now();
         Instant validity = now.plus(this.accessTokenExpiration, ChronoUnit.SECONDS);
-        var role = this.roleRepository.findByName(dto.getUser().getRole());
         List<String> listAuthority = new ArrayList<>();
         if (role != null) {
             listAuthority = role.getPermissions()
@@ -103,6 +101,36 @@ public class SecurityUtils {
         return Optional.ofNullable(securityContext.getAuthentication())
                 .filter(a -> a.getCredentials() instanceof String)
                 .map(a -> (String) a.getCredentials());
+    }
+
+    public static Optional<Long> getCurrentUserId() {
+        return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .map(Authentication::getPrincipal)
+                .filter(principal -> principal instanceof Jwt)
+                .map(principal -> (Jwt) principal)
+                .map(jwt -> jwt.getClaim("user"))
+                .filter(userClaim -> userClaim instanceof Map)
+                .map(userClaim -> ((Map<?, ?>) userClaim).get("id"))
+                .flatMap(id -> {
+                    if (id instanceof Number n)
+                        return Optional.of(n.longValue());
+                    if (id instanceof String s) {
+                        try {
+                            return Optional.of(Long.parseLong(s));
+                        } catch (NumberFormatException e) {
+                            return Optional.empty();
+                        }
+                    }
+                    return Optional.empty();
+                });
+    }
+
+    public static Long getCurrentUserIdOrNull() {
+        var userId = getCurrentUserId();
+        if (userId.isPresent()) {
+            return userId.get();
+        }
+        return null;
     }
 
     private static String extractPrincipal(Authentication authentication) {

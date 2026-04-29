@@ -100,6 +100,21 @@ public class TrackController {
         }
     }
 
+    @GetMapping("/{id}/isLiked")
+    @ApiMessage("User must be login for like track and comment")
+    public ResponseEntity<?> checkIsLikedWhenLogin(@PathVariable("id") String strId) throws PermissionException {
+        try {
+            Long id = Long.parseLong(strId);
+            if (id <= 0) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Track ID must be positive!");
+            }
+            return ResponseEntity.ok(this.trackService.isLikedWhenLogin(id));
+
+        } catch (NumberFormatException ne) {
+            return ResponseEntity.status(HttpStatusCode.valueOf(400)).body("Track ID must be number!");
+        }
+    }
+
     @GetMapping
     public ResponseEntity<?> fetchAllWithPagination(@Filter Specification<Track> spec, Pageable pageable,
             @RequestParam(value = "category", required = false) String category) {

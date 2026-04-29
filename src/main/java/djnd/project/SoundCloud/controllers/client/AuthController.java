@@ -1,6 +1,5 @@
 package djnd.project.SoundCloud.controllers.client;
 
-import djnd.project.SoundCloud.services.RoleService;
 import lombok.RequiredArgsConstructor;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,7 +24,6 @@ import djnd.project.SoundCloud.domain.ResLoginDTO;
 import djnd.project.SoundCloud.domain.request.LoginDTO;
 import djnd.project.SoundCloud.domain.request.users.UpdatePassword;
 import djnd.project.SoundCloud.domain.request.users.UserDTO;
-import djnd.project.SoundCloud.services.SessionManager;
 import djnd.project.SoundCloud.services.UserService;
 import djnd.project.SoundCloud.utils.SecurityUtils;
 import djnd.project.SoundCloud.utils.annotation.ApiMessage;
@@ -44,9 +42,6 @@ import lombok.experimental.FieldDefaults;
 public class AuthController {
     final UserService userService;
     final AuthenticationManagerBuilder builder;
-    final SessionManager sessionManager;
-    final SecurityUtils securityUtils;
-    final RoleService roleService;
     @Value("${djnd.jwt.refresh-token-validity-in-seconds}")
     private Long refreshTokenExpiration;
 
@@ -68,34 +63,6 @@ public class AuthController {
         var user = customUser.user();
         var res = this.userService.getUserLoginWhenAfterLogin(user);
         ResponseCookie cookie = ResponseCookie.from("refresh_token", res.getRefreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(refreshTokenExpiration)
-                .build();
-        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).body(res);
-    }
-
-    @PostMapping("/social-login/old")
-    @ApiMessage("Social Login account")
-    public ResponseEntity<ResLoginDTO> socialLogin(@Valid @RequestBody SocialLoginDTO dto) {
-        var user = this.userService.socialLogin(dto);
-        var res = new ResLoginDTO();
-        var userLogin = new ResLoginDTO.UserLogin();
-        userLogin.setEmail(user.getEmail());
-        userLogin.setId(user.getId());
-        userLogin.setName(user.getName());
-        var role = user.getRole() != null ? user.getRole() : this.roleService.handleGetRoleCustomer();
-        userLogin.setRole(role.getName());
-        res.setUser(userLogin);
-        var sessionID = this.sessionManager.createNewSession(user);
-        String accessToken = this.securityUtils.createAccessToken(user.getEmail(), res, sessionID);
-        res.setAccessToken(accessToken);
-        String refreshToken = this.securityUtils.createRefreshToken(user.getEmail(), res);
-        res.setRefreshToken(refreshToken);
-        this.userService.updateRefreshTokenByEmail(user.getEmail(), refreshToken);
-
-        ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
                 .secure(true)
                 .path("/")

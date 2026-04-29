@@ -2,6 +2,7 @@ package djnd.project.SoundCloud.controllers.client;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,5 +37,11 @@ public class PlayListController {
     public ResponseEntity<?> handleOnclickPlaylistExists(@RequestBody AddTrackToPlaylistDTO dto,
             @RequestParam("trackId") Long trackId) {
         return ResponseEntity.ok(this.playListService.handleOnClickTrackToPlaylist(dto, trackId));
+    }
+
+    @GetMapping("/exists")
+    @ApiMessage("Get all playlist and track id")
+    public ResponseEntity<?> getDataPlaylist() throws PermissionException {
+        return ResponseEntity.ok(this.playListService.getAllPlaylistAccount());
     }
 }

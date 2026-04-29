@@ -27,6 +27,10 @@ public record CustomUserDetails(User user) implements UserDetails {
         return authSet;
     }
 
+    public Long getId() {
+        return user.getId();
+    }
+
     @Override
     public String getPassword() {
         return user.getPassword();

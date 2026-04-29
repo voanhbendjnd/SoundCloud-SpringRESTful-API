@@ -1,5 +1,7 @@
 package djnd.project.SoundCloud.configs;
 
+import java.util.Collections;
+
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -7,7 +9,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -43,7 +44,9 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(
             HttpSecurity http,
             SmartAuthenticationEntryPoint sap,
-            @Qualifier("corsConfigurationSource") CorsConfigurationSource corsConfig) throws Exception {
+            @Qualifier("corsConfigurationSource") CorsConfigurationSource corsConfig
+    // PublicEndpointFilter publicEndpointFilter
+    ) throws Exception {
         String[] whiteList = {
                 "/",
                 "/api/v1/**",
@@ -52,11 +55,15 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfig))
                 .csrf(c -> c.disable())
+                // .addFilterBefore(publicEndpointFilter,
+                // org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class)
                 .authorizeHttpRequests(
                         authz -> authz
                                 .requestMatchers(whiteList).permitAll()
                                 .anyRequest().authenticated())
-                .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()).authenticationEntryPoint(sap))
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(publicEndpointJwtAuthenticationTokenConverter()))
+                        .authenticationEntryPoint(sap))
                 .formLogin(f -> f.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
         return http.build();
@@ -75,19 +82,19 @@ public class SecurityConfig {
 
     @Bean
     public JwtDecoder jwtDecoder() {
-        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(
-                getSecretKey()).macAlgorithm(SecurityUtils.JWT_ALGORITHM).build();
-        // Giải mã token thành công trả về jwt không thành công trả về exception
+        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(getSecretKey())
+                .macAlgorithm(SecurityUtils.JWT_ALGORITHM).build();
         return token -> {
             try {
+                // Nếu token là "undefined" hoặc rác, ném lỗi để
+                // Spring Security biết đây không phải là một nỗ lực login hợp lệ
                 return jwtDecoder.decode(token);
             } catch (Exception ex) {
-                System.out.println(ex.getMessage());
+                // Log lỗi để debug nhưng hệ thống sẽ hiểu là Unauthenticated
+                System.out.println(">>> JWT Error: " + ex.getMessage());
                 throw ex;
             }
-
         };
-
     }
 
     @Bean
@@ -101,6 +108,19 @@ public class SecurityConfig {
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(customConverter);
 
         return jwtAuthenticationConverter;
+    }
+
+    @Bean
+    public JwtAuthenticationConverter publicEndpointJwtAuthenticationTokenConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            // For public endpoints, we can skip the JWT validation entirely
+            // by returning empty authorities - the permitAll() will handle access
+            return Collections.emptyList();
+        });
+
+        return converter;
     }
 
 }

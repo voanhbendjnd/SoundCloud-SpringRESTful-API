@@ -57,6 +57,7 @@ public class WaveformService {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private Path download(String urlStr) throws Exception {
         URL url = new URL(urlStr);
         Path file = Files.createTempFile("audio", ".mp3");

@@ -1,18 +1,25 @@
 package djnd.project.SoundCloud.services;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import djnd.project.SoundCloud.domain.entity.Playlist;
 import djnd.project.SoundCloud.domain.entity.PlaylistTrack;
+import djnd.project.SoundCloud.domain.it.PlaylistKey;
 import djnd.project.SoundCloud.domain.request.AddTrackToPlaylistDTO;
 import djnd.project.SoundCloud.domain.request.PlaylistDTO;
 import djnd.project.SoundCloud.domain.response.ResAddToPlaylist;
+import djnd.project.SoundCloud.domain.response.ResAllPlaylist;
 import djnd.project.SoundCloud.domain.response.ResPlaylist;
 import djnd.project.SoundCloud.repositories.PlaylistRepository;
 import djnd.project.SoundCloud.repositories.PlaylistTrackRepository;
 import djnd.project.SoundCloud.repositories.TrackRepository;
+import djnd.project.SoundCloud.utils.SecurityUtils;
 import djnd.project.SoundCloud.utils.error.PermissionException;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
 import lombok.AccessLevel;
@@ -98,6 +105,22 @@ public class PlayListService {
         res.setIsAdded(!isAdded);
         res.setTotalTracks(total);
         return res;
+    }
+
+    public List<ResAllPlaylist> getAllPlaylistAccount() throws PermissionException {
+        Long userId = SecurityUtils.getCurrentUserIdOrNull();
+        if (userId != null) {
+            return this.playlistRepository.getAllPlaylistExistsByUserId(userId).stream()
+                    .collect(Collectors.groupingBy(x -> new PlaylistKey(x.getId(), x.getTitle()),
+                            Collectors.mapping(x -> x.getTrackId(), Collectors.toList())))
+                    .entrySet().stream().map(entry -> {
+                        var trackIds = entry.getValue().stream().filter(Objects::nonNull).toList();
+                        return new ResAllPlaylist(entry.getKey().id(), entry.getKey().title(), trackIds.size(),
+                                trackIds);
+                    }).toList();
+        }
+        throw new PermissionException("You do not have permission!");
+
     }
 
     public ResPlaylist toResPlaylist(Playlist playlist) {

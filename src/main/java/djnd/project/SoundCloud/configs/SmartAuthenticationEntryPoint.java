@@ -12,16 +12,19 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Smart Authentication Entry Point để handle 401 responses
- * 
+ *
  * Xử lý trường hợp:
- * - Request đến protected API với invalid token → trả về 401 với redirect info
- * 
- * LƯU Ý: Public APIs (books, categories) đã được whitelist trong SecurityConfig
+ * - Request đến protected API với invalid token → trả về 401 với redirect
+ * info
+ *
+ * LƯU Ý: Public APIs (books, categories) đã được whitelist trong
+ * SecurityConfig
  * nên sẽ không bao giờ đến đây
  * kích hoạt khi jwt hết hạn hoặc không có
  */
 @Component
-public class SmartAuthenticationEntryPoint implements AuthenticationEntryPoint {
+public class SmartAuthenticationEntryPoint implements
+        AuthenticationEntryPoint {
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
@@ -36,9 +39,12 @@ public class SmartAuthenticationEntryPoint implements AuthenticationEntryPoint {
         // Protected API với invalid token - yêu cầu login
         String errorMessage = """
                 {
-                    "error": "Unauthorized",
-                    "message": "API can incorrect or access token invalid!",
-                    "code": "JWT_INVALID"
+                "error": "Unauthorized",
+                "message": "(session expired) Please login to access this resource",
+                "code": "UNAUTHORIZED",
+                "publicApi": false,
+                "redirect": true,
+                "redirectUrl": "/login"
                 }
                 """;
         response.getWriter().write(errorMessage);

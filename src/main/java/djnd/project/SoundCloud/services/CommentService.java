@@ -53,9 +53,23 @@ public class CommentService {
         }
 
         var page = this.commentRepository.findAll(spec, pageable);
-        meta.setPage(pageable.getPageNumber() + 1);
+        int requestedPage = pageable.getPageNumber() + 1;
+        int totalPages = page.getTotalPages();
+
+        // Validate page bounds
+        if (requestedPage > totalPages && totalPages > 0) {
+            meta.setPage(requestedPage);
+            meta.setPageSize(pageable.getPageSize());
+            meta.setPages(totalPages);
+            meta.setTotal(page.getTotalElements());
+            res.setMeta(meta);
+            res.setResult(java.util.Collections.emptyList());
+            return res;
+        }
+
+        meta.setPage(requestedPage);
         meta.setPageSize(pageable.getPageSize());
-        meta.setPages(page.getTotalPages());
+        meta.setPages(totalPages);
         meta.setTotal(page.getTotalElements());
         res.setMeta(meta);
         res.setResult(page.getContent().stream().map(this::toRes).toList());

@@ -69,11 +69,8 @@ public class UserService {
         var emailOptional = SecurityUtils.getCurrentUserLogin();
         if (emailOptional.isPresent()) {
             var email = emailOptional.get();
-            var user = this.userRepository.findByEmailIgnoreCase(email);
-            if (user != null) {
-                return user;
-            }
-            throw new ResourceNotFoundException("User Email", email);
+            return this.userRepository.findWithDetailByEmail(email)
+                    .orElseThrow(() -> new ResourceNotFoundException("User Email", email));
         }
         throw new PermissionException("You do not have permission!");
     }
@@ -217,7 +214,7 @@ public class UserService {
                 userLogin.setUsername(user.getUsername());
                 res.setUser(userLogin);
                 var sessionID = this.sessionManager.createNewSession(user);
-                var accessToken = this.securityUtils.createAccessToken(email, res, sessionID);
+                var accessToken = this.securityUtils.createAccessToken(email, res, sessionID, user.getRole());
                 res.setAccessToken(accessToken);
                 res.setExpiresIn(expiresIn);
                 var newRefreshToken = this.securityUtils.createRefreshToken(email, res);
@@ -366,6 +363,7 @@ public class UserService {
     /*
      * response "login": "username", "id" 123, "avatar_url: "http", "email": null
      */
+    @SuppressWarnings("unchecked")
     public Map<String, Object> getGithubUser(String accessTokenGithub) {
         RestTemplate restTemplate = new RestTemplate();
         var headers = new HttpHeaders();
@@ -382,6 +380,7 @@ public class UserService {
     /*
      * response: email, primary (true | false), verified (true | false)
      */
+    @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getGithubEmails(String accessTokenGithub) {
         var resTemplate = new RestTemplate();
         var headers = new HttpHeaders();
@@ -421,7 +420,9 @@ public class UserService {
             user.setEmail(email);
             user.setName(name != null ? name : userName);
             user.setType(type);
-            return this.getUserLoginWhenAfterLogin(this.userRepository.save(user));
+            var saveUser = this.userRepository.save(user);
+
+            return this.getUserLoginWhenAfterLogin(this.userRepository.findWithDetailById(saveUser.getId()).get());
         }
         return null;
 
@@ -440,7 +441,7 @@ public class UserService {
         userLogin.setUsername(user.getUsername());
         res.setUser(userLogin);
         var sessionID = this.sessionManager.createNewSession(user);
-        var accessToken = this.securityUtils.createAccessToken(email, res, sessionID);
+        var accessToken = this.securityUtils.createAccessToken(email, res, sessionID, user.getRole());
         res.setAccessToken(accessToken);
         var newRefreshToken = this.securityUtils.createRefreshToken(email, res);
         updateRefreshTokenByEmail(email, newRefreshToken);
