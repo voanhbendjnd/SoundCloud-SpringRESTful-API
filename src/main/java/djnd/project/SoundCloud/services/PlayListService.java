@@ -53,6 +53,7 @@ public class PlayListService {
                     playlistTrack.setIsAdded(true);
                     return playlistTrack;
                 }).toList());
+                playlist.setImgUrl(tracks.getFirst().getImgUrl());
                 playlist.setTotalTracks(tracks.size());
             }
         }
@@ -76,7 +77,7 @@ public class PlayListService {
             playlistTrack.setIsAdded(dto.getIsAdded());
             this.playlistTrackRepository.save(playlistTrack);
             this.playlistRepository.incremementTrackInPlaylist(playlist.getId(), 1);
-            var currentTotalTracks = playlist.getTotalTracks() + 1;
+            var currentTotalTracks = (playlist.getTotalTracks() != null ? playlist.getTotalTracks() : 0) + 1;
             playlist.setTotalTracks(currentTotalTracks);
             return this.toResAddToPlaylist(playlist.getId(), existsTrackInPlaylist, currentTotalTracks);
         }
@@ -86,7 +87,7 @@ public class PlayListService {
             if (playlistTrackDB != null) {
                 this.playlistRepository.decremementTrackInPlaylist(playlist.getId(), 1);
                 this.playlistTrackRepository.deleteByPlaylistIdAndTrackId(playlist.getId(), trackId);
-                var currentTotalTracks = playlist.getTotalTracks() - 1;
+                var currentTotalTracks = (playlist.getTotalTracks() != null ? playlist.getTotalTracks() : 0) - 1;
                 if (currentTotalTracks < 0) {
                     throw new DataAccessResourceFailureException("Data Access Resource Failure!");
                 }
@@ -111,12 +112,13 @@ public class PlayListService {
         Long userId = SecurityUtils.getCurrentUserIdOrNull();
         if (userId != null) {
             return this.playlistRepository.getAllPlaylistExistsByUserId(userId).stream()
-                    .collect(Collectors.groupingBy(x -> new PlaylistKey(x.getId(), x.getTitle()),
+                    .collect(Collectors.groupingBy(
+                            x -> new PlaylistKey(x.getId(), x.getTitle(), x.getImgUrl(), x.getIsPublic()),
                             Collectors.mapping(x -> x.getTrackId(), Collectors.toList())))
                     .entrySet().stream().map(entry -> {
                         var trackIds = entry.getValue().stream().filter(Objects::nonNull).toList();
                         return new ResAllPlaylist(entry.getKey().id(), entry.getKey().title(), trackIds.size(),
-                                trackIds);
+                                trackIds, entry.getKey().imgUrl(), entry.getKey().isPublic());
                     }).toList();
         }
         throw new PermissionException("You do not have permission!");
@@ -129,8 +131,11 @@ public class PlayListService {
         res.setCreatedBy(playlist.getCreatedBy());
         res.setDescription(playlist.getDescription());
         res.setId(playlist.getId());
-        res.setImgUrl(playlist.getImgUrl() != null ? playlist.getImgUrl()
-                : playlist.getPlaylistTracks().getLast().getTrack().getImgUrl());
+        if (playlist.getImgUrl() != null || playlist.getTotalTracks() > 0) {
+            var img = playlist.getImgUrl() != null ? playlist.getImgUrl()
+                    : playlist.getPlaylistTracks().getFirst().getTrack().getImgUrl();
+            playlist.setImgUrl(img);
+        }
         res.setIsPublic(playlist.getIsPublic());
         res.setTitle(playlist.getTitle());
         res.setTotalTracks(playlist.getTotalTracks());
@@ -143,25 +148,29 @@ public class PlayListService {
         userPlaylist.setName(user.getName());
         userPlaylist.setRole(user.getRole().getName());
         res.setUser(userPlaylist);
-        var playlistTracks = playlist.getPlaylistTracks().stream().map(x -> {
-            var resPlaylistTrack = new ResPlaylist.ResPlaylistTrack();
-            var track = x.getTrack();
-            resPlaylistTrack.setId(track.getId());
-            resPlaylistTrack.setCountLikes(track.getCountLike());
-            resPlaylistTrack.setCountPlays(track.getCountPlay());
-            resPlaylistTrack.setImgUrl(track.getImgUrl());
-            resPlaylistTrack.setTitle(track.getTitle());
-            resPlaylistTrack.setTrackUrl(this.trackService.getResTrackUrlId(track.getTrackUrl()));
-            var uploader = track.getUser();
-            var resUploader = new ResPlaylist.ResPlaylistTrack.Uploader();
-            resUploader.setAvatar(uploader.getAvatar());
-            resUploader.setId(uploader.getId());
-            resUploader.setName(uploader.getName());
-            resPlaylistTrack.setUploader(resUploader);
-            return resPlaylistTrack;
-        }).toList();
-        res.setPlaylistTracks(playlistTracks);
-        res.setTotalTracks(playlistTracks.size());
+        if (playlist.getPlaylistTracks() != null) {
+            var playlistTracks = playlist.getPlaylistTracks().stream().map(x -> {
+                var resPlaylistTrack = new ResPlaylist.ResPlaylistTrack();
+                var track = x.getTrack();
+                resPlaylistTrack.setId(track.getId());
+                resPlaylistTrack.setCountLikes(track.getCountLike());
+                resPlaylistTrack.setCountPlays(track.getCountPlay());
+                resPlaylistTrack.setImgUrl(track.getImgUrl());
+                resPlaylistTrack.setTitle(track.getTitle());
+                resPlaylistTrack.setTrackUrl(this.trackService.getResTrackUrlId(track.getTrackUrl()));
+                var uploader = track.getUser();
+                var resUploader = new ResPlaylist.ResPlaylistTrack.Uploader();
+                resUploader.setAvatar(uploader.getAvatar());
+                resUploader.setId(uploader.getId());
+                resUploader.setName(uploader.getName());
+                resPlaylistTrack.setUploader(resUploader);
+                return resPlaylistTrack;
+            }).toList();
+            res.setPlaylistTracks(playlistTracks);
+            res.setTotalTracks(playlistTracks.size());
+
+        }
+
         return res;
     }
 }

@@ -6,4 +6,8 @@ public interface PlaylistTrackInterface {
     String getTitle();
 
     Long getTrackId();
+
+    String getImgUrl();
+
+    Boolean getIsPublic();
 }

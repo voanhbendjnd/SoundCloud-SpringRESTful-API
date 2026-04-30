@@ -34,7 +34,7 @@ public class Playlist extends BaseEntity {
     @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 20)
     List<PlaylistTrack> playlistTracks;
-    Integer totalTracks;
+    Integer totalTracks = 0;
     Boolean isPublic;
 
 }

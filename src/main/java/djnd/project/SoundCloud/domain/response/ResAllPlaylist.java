@@ -17,4 +17,6 @@ public class ResAllPlaylist {
     String title;
     Integer totalTracks;
     List<Long> trackIds;
+    String imgUrl;
+    boolean isPublic;
 }

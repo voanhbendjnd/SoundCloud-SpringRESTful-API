@@ -50,7 +50,6 @@ public class TrackService {
     final CategoryRepository categoryRepository;
     final FileService fileService;
     final UserService userService;
-    final UserRepository userRepository;
     final TrackLikeRepository trackLikeRepository;
     final CountPlayTrack countPlayTrack;
     final JdbcTemplate jdbcTemplate;
@@ -158,14 +157,9 @@ public class TrackService {
     public TrackResponse fetchById(Long id) {
         var track = this.trackRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Track ID", "#" + id));
-        var res = convertToResponse(track);
         var userId = SecurityUtils.getCurrentUserIdOrNull();
-        if (userId != null) {
-            res.setIsLiked(this.trackLikeRepository.existsByUserIdAndTrackId(userId, id));
-            return res;
-        } else {
-            return res;
-        }
+
+        return convertToResponse(track, userId);
     }
 
     public boolean isLikedWhenLogin(Long id) throws PermissionException {
@@ -203,15 +197,20 @@ public class TrackService {
         meta.setPages(page.getTotalPages());
         meta.setTotal(page.getTotalElements());
         res.setMeta(meta);
+        var userId = SecurityUtils.getCurrentUserIdOrNull();
+
         res.setResult(page.getContent().stream()
-                .map(this::convertToResponse)
+                .map(x -> convertToResponse(x, userId))
                 .toList());
 
         return res;
     }
 
-    private TrackResponse convertToResponse(Track x) {
+    private TrackResponse convertToResponse(Track x, Long userIdLogin) {
         var result = new TrackResponse();
+        if (userIdLogin != null) {
+            result.setIsLiked(this.trackLikeRepository.existsByUserIdAndTrackId(userIdLogin, x.getId()));
+        }
         result.setCategory(x.getCategory().getName());
         result.setCountLike(x.getCountLike());
         result.setCountPlay(x.getCountPlay());
@@ -223,6 +222,7 @@ public class TrackService {
         result.setTrackUrl(this.getResTrackUrlId(x.getTrackUrl()));
         result.setUpdatedAt(x.getUpdatedAt());
         result.setPeaks(x.getPeaks());
+
         var user = x.getUser();
         var uploader = new TrackResponse.Uploader();
         uploader.setEmail(user.getEmail());
@@ -248,7 +248,8 @@ public class TrackService {
         meta.setPages(page.getTotalPages());
         meta.setTotal(page.getTotalElements());
         res.setMeta(meta);
-        res.setResult(page.getContent().stream().map(this::convertToResponse).toList());
+        var userLoginId = SecurityUtils.getCurrentUserIdOrNull();
+        res.setResult(page.getContent().stream().map(x -> convertToResponse(x, userLoginId)).toList());
         return res;
     }
 
@@ -335,7 +336,8 @@ public class TrackService {
         meta.setPages(totalPages);
         meta.setTotal(myTracks.getTotalElements());
         res.setMeta(meta);
-        var resMyTracks = myTracks.getContent().stream().map(this::convertToResponse).toList();
+        // var userId = SecurityUtils.getCurrentUserIdOrNull();
+        var resMyTracks = myTracks.getContent().stream().map(x -> convertToResponse(x, null)).toList();
         for (var x : resMyTracks) {
             x.setIsLiked(true);
         }
