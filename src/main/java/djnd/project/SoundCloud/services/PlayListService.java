@@ -5,23 +5,30 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import djnd.project.SoundCloud.domain.entity.Playlist;
 import djnd.project.SoundCloud.domain.entity.PlaylistTrack;
+import djnd.project.SoundCloud.domain.entity.User;
 import djnd.project.SoundCloud.domain.it.PlaylistKey;
 import djnd.project.SoundCloud.domain.request.AddTrackToPlaylistDTO;
 import djnd.project.SoundCloud.domain.request.PlaylistDTO;
 import djnd.project.SoundCloud.domain.response.ResAddToPlaylist;
 import djnd.project.SoundCloud.domain.response.ResAllPlaylist;
 import djnd.project.SoundCloud.domain.response.ResPlaylist;
+import djnd.project.SoundCloud.domain.response.ResultPaginationDTO;
 import djnd.project.SoundCloud.repositories.PlaylistRepository;
 import djnd.project.SoundCloud.repositories.PlaylistTrackRepository;
 import djnd.project.SoundCloud.repositories.TrackRepository;
 import djnd.project.SoundCloud.utils.SecurityUtils;
 import djnd.project.SoundCloud.utils.error.PermissionException;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -122,6 +129,36 @@ public class PlayListService {
                     }).toList();
         }
         throw new PermissionException("You do not have permission!");
+
+    }
+
+    public ResultPaginationDTO getAllPlaylistWithPagination(Specification<Playlist> spec, Pageable pageable,
+
+            String title) throws PermissionException {
+        var userId = SecurityUtils.getCurrentUserIdOrNull();
+        if (userId == null) {
+            throw new PermissionException("You do not have access!");
+        }
+        var res = new ResultPaginationDTO();
+        var meta = new ResultPaginationDTO.Meta();
+        // if (title != null && !title.isEmpty()) {
+        // Specification<Playlist> ps = (r, q, c) -> {
+        // String key = "%" + title.toLowerCase() + "%";
+        // Predicate titlePredicate = c.like(c.lower(r.get("title")), key);
+        // Join<Playlist, User> userJoin = r.join("user", JoinType.LEFT);
+        // var userPredicate = c.equal(userJoin.get("id"), userId);
+        // return c.and(userPredicate, titlePredicate);
+        // };
+        // spec = spec.and(ps);
+        // }
+        var page = this.playlistRepository.findAllPlaylistNative(userId, title, pageable);
+        meta.setPage(pageable.getPageNumber() + 1);
+        meta.setPageSize(pageable.getPageSize());
+        meta.setPages(page.getTotalPages());
+        meta.setTotal(page.getTotalElements());
+        res.setMeta(meta);
+        res.setResult(page.getContent());
+        return res;
 
     }
 

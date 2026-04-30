@@ -3,6 +3,8 @@ package djnd.project.SoundCloud.repositories;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import djnd.project.SoundCloud.domain.entity.Playlist;
+import djnd.project.SoundCloud.domain.it.PlaylistFindAll;
 import djnd.project.SoundCloud.domain.it.PlaylistTrackInterface;
 import io.lettuce.core.dynamic.annotation.Param;
 
@@ -54,4 +57,7 @@ public interface PlaylistRepository extends JpaRepository<Playlist, Long>, JpaSp
     @Query(value = "select p.isPublic as isPublic, p.id as id, p.title as title, pt.track.id as trackId, p.imgUrl as imgUrl from Playlist p left join p.playlistTracks pt where p.user.id = :userId")
     List<PlaylistTrackInterface> getAllPlaylistExistsByUserId(@Param("userId") Long userId);
 
+    @Query(value = "select p.id as id, p.title as title, p.img_url as imgUrl, p.total_tracks as totalTracks, u.name as createdBy from playlists p inner join users u on p.user_id = u.id where p.user_id = :userId and lower(p.title) like lower(concat('%', :title, '%'))", countQuery = "select count(*) from playlists p where p.user_id = :userId and lower(p.title) like lower(concat('%', :title, '%'))", nativeQuery = true)
+    Page<PlaylistFindAll> findAllPlaylistNative(@Param("userId") Long userId, @Param("title") String title,
+            Pageable pageable);
 }

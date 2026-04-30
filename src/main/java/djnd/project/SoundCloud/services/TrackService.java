@@ -3,6 +3,7 @@ package djnd.project.SoundCloud.services;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +35,6 @@ import djnd.project.SoundCloud.redis.services.CountPlayTrack;
 import djnd.project.SoundCloud.repositories.CategoryRepository;
 import djnd.project.SoundCloud.repositories.TrackLikeRepository;
 import djnd.project.SoundCloud.repositories.TrackRepository;
-import djnd.project.SoundCloud.repositories.UserRepository;
 import djnd.project.SoundCloud.utils.SecurityUtils;
 import djnd.project.SoundCloud.utils.error.PermissionException;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
@@ -323,7 +323,7 @@ public class TrackService {
             meta.setPages(totalPages);
             meta.setTotal(myTracks.getTotalElements());
             res.setMeta(meta);
-            res.setResult(java.util.Collections.emptyList());
+            res.setResult(Collections.emptyList());
             return res;
         }
 
