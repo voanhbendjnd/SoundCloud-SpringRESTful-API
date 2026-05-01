@@ -364,13 +364,13 @@ public class UserService {
      * response "login": "username", "id" 123, "avatar_url: "http", "email": null
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> getGithubUser(String accessTokenGithub) {
+    public Map<String, Object> getInforUser(String accessToken, String link) {
         RestTemplate restTemplate = new RestTemplate();
         var headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + accessTokenGithub);
+        headers.set("Authorization", "Bearer " + accessToken);
         headers.set("Accept", "application/json");
         HttpEntity<String> entity = new HttpEntity<>(headers);
-        ResponseEntity<Map> response = restTemplate.exchange("https://api.github.com/user",
+        ResponseEntity<Map> response = restTemplate.exchange(link,
                 HttpMethod.GET,
                 entity,
                 Map.class);
@@ -395,12 +395,13 @@ public class UserService {
     }
 
     public ResLoginDTO loginWithSocial(String accessToken, String type) {
+        String userName = null, avatar = null, email = null, name = null;
         if (type.equalsIgnoreCase("GITHUB")) {
-            Map<String, Object> userInfo = this.getGithubUser(accessToken);
-            var userName = (String) userInfo.get("login");
-            var avatar = (String) userInfo.get("avatar_url");
-            var email = (String) userInfo.get("email");
-            var name = (String) userInfo.get("name");
+            Map<String, Object> userInfo = this.getInforUser(accessToken, "https://api.github.com/user");
+            userName = (String) userInfo.get("login");
+            avatar = (String) userInfo.get("avatar_url");
+            email = (String) userInfo.get("email");
+            name = (String) userInfo.get("name");
             if (email == null) {
                 List<Map<String, Object>> emails = this.getGithubEmails(accessToken);
                 email = emails.stream().filter(e -> (Boolean) e.get("primary") && (Boolean) e.get("verified"))
@@ -409,23 +410,42 @@ public class UserService {
             if (email == null) {
                 throw new BadCredentialsException("Email nil!");
             }
-            // if exists -> login
-            Optional<User> optionalUser = Optional.ofNullable(this.userRepository.findByEmailIgnoreCase(email));
-            if (optionalUser.isPresent()) {
-                return this.getUserLoginWhenAfterLogin(optionalUser.get());
+        } else if (type.equalsIgnoreCase("GOOGLE")) {
+            Map<String, Object> userInfo = this.getInforUser(accessToken,
+                    "https://www.googleapis.com/oauth2/v3/userinfo");
+            email = (String) userInfo.get("email");
+            avatar = (String) userInfo.get("picture");
+            name = (String) userInfo.get("name");
+            Boolean isEmailVerified = (Boolean) userInfo.get("email_verified");
+            if (isEmailVerified != null && !isEmailVerified) {
+                throw new BadCredentialsException("Google email not verified!");
             }
+        } else {
+            return null;
+        }
+        if (email == null) {
+            throw new BadCredentialsException("Email nil");
+        }
+        return this.loginIfAccountExists(email, avatar,
+                name != null ? name : userName != null ? userName : "no anme", type);
+
+    }
+
+    public ResLoginDTO loginIfAccountExists(String email, String avatar, String name, String type) {
+        Optional<User> optionalUser = Optional.ofNullable(this.userRepository.findByEmailIgnoreCase(email));
+        if (optionalUser.isPresent()) {
+            return this.getUserLoginWhenAfterLogin(optionalUser.get());
+        } else {
             var user = new User();
             user.setRole(this.roleService.handleGetRoleCustomer());
             user.setAvatar(avatar);
             user.setEmail(email);
-            user.setName(name != null ? name : userName);
+            user.setName(name != null ? name : "No Name");
             user.setType(type);
             var saveUser = this.userRepository.save(user);
-
             return this.getUserLoginWhenAfterLogin(this.userRepository.findWithDetailById(saveUser.getId()).get());
-        }
-        return null;
 
+        }
     }
 
     public ResLoginDTO getUserLoginWhenAfterLogin(User user) {
