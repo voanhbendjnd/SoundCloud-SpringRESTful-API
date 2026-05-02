@@ -172,6 +172,12 @@ public class PlayListService {
         }
     }
 
+    public ResPlaylist getPlaylistDetailPublic(Long playlistId) {
+        var playlist = this.playlistRepository.findWithDetailsById(playlistId)
+                .orElseThrow(() -> new ResourceNotFoundException("Playlist ID", playlistId));
+        return this.toResPlaylist(playlist);
+    }
+
     public ResPlaylist toResPlaylist(Playlist playlist) {
         var res = new ResPlaylist();
         res.setCreatedAt(playlist.getCreatedAt());

@@ -74,4 +74,19 @@ public class PlayListController {
             return ResponseEntity.status(HttpStatusCode.valueOf(400)).body("Playlist ID must be number!");
         }
     }
+
+    @GetMapping("/public/{id}")
+    @ApiMessage("Get playlist public with playlist id")
+    public ResponseEntity<?> getPlaylistPublicWithPlaylistID(@PathVariable("id") String strId) {
+        try {
+            Long id = Long.parseLong(strId);
+            if (id <= 0) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Playlist ID must be positive!");
+            }
+            return ResponseEntity.ok(this.playListService.getPlaylistDetailPublic(id));
+
+        } catch (NumberFormatException ne) {
+            return ResponseEntity.status(HttpStatusCode.valueOf(400)).body("Playlist ID must be number!");
+        }
+    }
 }

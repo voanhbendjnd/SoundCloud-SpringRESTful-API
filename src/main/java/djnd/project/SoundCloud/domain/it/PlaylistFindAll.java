@@ -10,4 +10,6 @@ public interface PlaylistFindAll {
     String getTotalTracks();
 
     String getCreatedBy();
+
+    Boolean getIsPublic();
 }
