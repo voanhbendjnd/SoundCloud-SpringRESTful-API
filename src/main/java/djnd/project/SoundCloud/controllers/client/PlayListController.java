@@ -3,9 +3,11 @@ package djnd.project.SoundCloud.controllers.client;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -56,5 +58,20 @@ public class PlayListController {
             @RequestParam(value = "title", required = false) String title) throws PermissionException {
         return ResponseEntity
                 .ok(this.playListService.getAllPlaylistWithPagination(spec, pageable, title != null ? title : ""));
+    }
+
+    @GetMapping("/{id}")
+    @ApiMessage("Get playlist with playlist id")
+    public ResponseEntity<?> getPlaylistDetailWithID(@PathVariable("id") String strId) {
+        try {
+            Long id = Long.parseLong(strId);
+            if (id <= 0) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Playlist ID must be positive!");
+            }
+            return ResponseEntity.ok(this.playListService.getPlaylistDetail(id));
+
+        } catch (NumberFormatException ne) {
+            return ResponseEntity.status(HttpStatusCode.valueOf(400)).body("Playlist ID must be number!");
+        }
     }
 }

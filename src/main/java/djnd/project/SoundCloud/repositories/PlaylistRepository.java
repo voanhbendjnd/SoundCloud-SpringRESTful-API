@@ -54,10 +54,10 @@ public interface PlaylistRepository extends JpaRepository<Playlist, Long>, JpaSp
     @Query(value = "select p.totalTracks from Playlist p where p.id = :playlistId")
     Integer getTotalTrackById(@Param("playlistId") Long playlistId);
 
-    @Query(value = "select p.isPublic as isPublic, p.id as id, p.title as title, pt.track.id as trackId, p.imgUrl as imgUrl from Playlist p left join p.playlistTracks pt where p.user.id = :userId")
+    @Query(value = "select p.isPublic as isPublic, p.id as id, p.title as title, pt.track.id as trackId, p.imgUrl as imgUrl from Playlist p left join p.playlistTracks pt where p.user.id = :userId order by p.id desc")
     List<PlaylistTrackInterface> getAllPlaylistExistsByUserId(@Param("userId") Long userId);
 
-    @Query(value = "select p.id as id, p.title as title, p.img_url as imgUrl, p.total_tracks as totalTracks, u.name as createdBy from playlists p inner join users u on p.user_id = u.id where p.user_id = :userId and lower(p.title) like lower(concat('%', :title, '%'))", countQuery = "select count(*) from playlists p where p.user_id = :userId and lower(p.title) like lower(concat('%', :title, '%'))", nativeQuery = true)
+    @Query(value = "select p.id as id, p.title as title, p.img_url as imgUrl, p.total_tracks as totalTracks, u.name as createdBy from playlists p inner join users u on p.user_id = u.id where p.user_id = :userId and lower(p.title) like lower(concat('%', :title, '%')) order by p.id desc", countQuery = "select count(*) from playlists p where p.user_id = :userId and lower(p.title) like lower(concat('%', :title, '%'))", nativeQuery = true)
     Page<PlaylistFindAll> findAllPlaylistNative(@Param("userId") Long userId, @Param("title") String title,
             Pageable pageable);
 }

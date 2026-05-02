@@ -219,7 +219,7 @@ public class TrackService {
         result.setId(x.getId());
         result.setImgUrl(x.getImgUrl());
         result.setTitle(x.getTitle());
-        result.setTrackUrl(this.getResTrackUrlId(x.getTrackUrl()));
+        result.setTrackUrl(x.getTrackUrl());
         result.setUpdatedAt(x.getUpdatedAt());
         result.setPeaks(x.getPeaks());
 
@@ -361,14 +361,14 @@ public class TrackService {
         return res;
     }
 
-    public String getResTrackUrlId(String trackUrl) {
-        var keyCut = "/upload";
-        var index = trackUrl.indexOf(keyCut);
-        if (index != -1) {
-            return trackUrl.substring(index + keyCut.length());
-        }
-        throw new ResourceNotFoundException("Track URL", trackUrl);
-    }
+    // public String getResTrackUrlId(String trackUrl) {
+    // var keyCut = "/upload";
+    // var index = trackUrl.indexOf(keyCut);
+    // if (index != -1) {
+    // return trackUrl.substring(index + keyCut.length());
+    // }
+    // throw new ResourceNotFoundException("Track URL", trackUrl);
+    // }
 
     public boolean checkIdAndAudioFile(Long trackId, Long trackIdLast, String trackUrl) {
         if (!this.trackRepository.existsByTrackUrlAndId("https://res.cloudinary.com/dddppjhly/video/upload" + trackUrl,
@@ -394,7 +394,7 @@ public class TrackService {
             res.setImgUrl(x.getImgUrl());
             res.setName(x.getName());
             res.setTitle(x.getTitle());
-            res.setTrackUrl(this.getResTrackUrlId(x.getTrackUrl()));
+            res.setTrackUrl(x.getTrackUrl());
             return res;
         }).toList();
 

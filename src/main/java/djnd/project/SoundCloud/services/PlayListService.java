@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import djnd.project.SoundCloud.domain.entity.Playlist;
 import djnd.project.SoundCloud.domain.entity.PlaylistTrack;
-import djnd.project.SoundCloud.domain.entity.User;
 import djnd.project.SoundCloud.domain.it.PlaylistKey;
 import djnd.project.SoundCloud.domain.request.AddTrackToPlaylistDTO;
 import djnd.project.SoundCloud.domain.request.PlaylistDTO;
@@ -26,9 +25,6 @@ import djnd.project.SoundCloud.repositories.TrackRepository;
 import djnd.project.SoundCloud.utils.SecurityUtils;
 import djnd.project.SoundCloud.utils.error.PermissionException;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -40,7 +36,6 @@ public class PlayListService {
     PlaylistRepository playlistRepository;
     UserService userService;
     TrackRepository trackRepository;
-    TrackService trackService;
     PlaylistTrackRepository playlistTrackRepository;
 
     public ResPlaylist createNewPlaylist(PlaylistDTO dto) throws PermissionException {
@@ -60,7 +55,7 @@ public class PlayListService {
                     playlistTrack.setIsAdded(true);
                     return playlistTrack;
                 }).toList());
-                playlist.setImgUrl(tracks.getFirst().getImgUrl());
+                // playlist.setImgUrl(tracks.getFirst().getImgUrl());
                 playlist.setTotalTracks(tracks.size());
             }
         }
@@ -151,6 +146,7 @@ public class PlayListService {
         // };
         // spec = spec.and(ps);
         // }
+
         var page = this.playlistRepository.findAllPlaylistNative(userId, title, pageable);
         meta.setPage(pageable.getPageNumber() + 1);
         meta.setPageSize(pageable.getPageSize());
@@ -160,6 +156,20 @@ public class PlayListService {
         res.setResult(page.getContent());
         return res;
 
+    }
+
+    public ResPlaylist getPlaylistDetail(Long playlistId) {
+        var playlist = this.playlistRepository.findWithDetailsById(playlistId)
+                .orElseThrow(() -> new ResourceNotFoundException("Playlist ID", playlistId));
+        if (!playlist.getIsPublic()) {
+            var userId = SecurityUtils.getCurrentUserIdOrNull();
+            if (userId != null && userId.equals(playlist.getUser().getId())) {
+                return this.toResPlaylist(playlist);
+            }
+            throw new ResourceNotFoundException("Playlist", playlistId);
+        } else {
+            return this.toResPlaylist(playlist);
+        }
     }
 
     public ResPlaylist toResPlaylist(Playlist playlist) {
@@ -194,7 +204,7 @@ public class PlayListService {
                 resPlaylistTrack.setCountPlays(track.getCountPlay());
                 resPlaylistTrack.setImgUrl(track.getImgUrl());
                 resPlaylistTrack.setTitle(track.getTitle());
-                resPlaylistTrack.setTrackUrl(this.trackService.getResTrackUrlId(track.getTrackUrl()));
+                resPlaylistTrack.setTrackUrl(track.getTrackUrl());
                 var uploader = track.getUser();
                 var resUploader = new ResPlaylist.ResPlaylistTrack.Uploader();
                 resUploader.setAvatar(uploader.getAvatar());
