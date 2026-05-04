@@ -27,6 +27,7 @@ import djnd.project.SoundCloud.domain.request.users.UserDTO;
 import djnd.project.SoundCloud.services.UserService;
 import djnd.project.SoundCloud.utils.SecurityUtils;
 import djnd.project.SoundCloud.utils.annotation.ApiMessage;
+import djnd.project.SoundCloud.utils.constains.ActionToken;
 import djnd.project.SoundCloud.utils.error.PasswordMismatchException;
 import djnd.project.SoundCloud.utils.error.PermissionException;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
@@ -94,14 +95,15 @@ public class AuthController {
 
     }
 
-    @GetMapping("/auth/refresh")
-    @ApiMessage("Create new res fresh and Access Token when User back")
+    @PostMapping("/refresh")
+    @ApiMessage("Create new refresh and Access Token")
     public ResponseEntity<ResLoginDTO> resetRefreshToken(
-            @CookieValue(name = "refresh_token") String refreshToken) {
+            @RequestBody ResLoginDTO dto) {
+        String refreshToken = dto.getRefreshToken();
         if (refreshToken == null || refreshToken.isEmpty()) {
             throw new BadCredentialsException("Refresh Token Invalid!");
         }
-        var res = this.userService.handleRefreshTokenWithCondition(refreshToken, "refresh");
+        var res = this.userService.handleRefreshTokenWithCondition(refreshToken, ActionToken.REFRESH);
         var cookie = ResponseCookie.from("refresh_token", res.getRefreshToken())
                 .httpOnly(true).secure(true).path("/").maxAge(refreshTokenExpiration).build();
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).body(res);
@@ -114,7 +116,7 @@ public class AuthController {
         if (refreshToken.equals("invalid")) {
             throw new BadCredentialsException("Refresh Token Invalid");
         }
-        this.userService.handleRefreshTokenWithCondition(refreshToken, "delete");
+        this.userService.handleRefreshTokenWithCondition(refreshToken, ActionToken.DELETE);
         return ResponseEntity.ok(null);
     }
 

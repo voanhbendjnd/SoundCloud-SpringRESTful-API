@@ -66,6 +66,8 @@ public class Track {
     List<TrackLike> trackLikes;
     @OneToMany(mappedBy = "track", cascade = CascadeType.ALL, orphanRemoval = true)
     List<PlaylistTrack> playlistTracks;
+    @OneToMany(mappedBy = "track", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<HistoryTrack> historyTracks;
 
     @PrePersist
     public void handleBeforeCreateAt() {

@@ -9,7 +9,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -21,7 +20,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Service;
 
 import com.nimbusds.jose.util.Base64;
@@ -29,6 +27,10 @@ import com.nimbusds.jose.util.Base64;
 import djnd.project.SoundCloud.domain.ResLoginDTO;
 import djnd.project.SoundCloud.domain.entity.Permission;
 import djnd.project.SoundCloud.domain.entity.Role;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 
@@ -46,22 +48,12 @@ public class SecurityUtils {
     String jwtKey;
     @Value("${djnd.jwt.access-token-validity-in-seconds}")
     Long accessTokenExpiration;
-    @Value("${djnd.jwt.access-token-validity-in-seconds}")
+    @Value("${djnd.jwt.refresh-token-validity-in-seconds}")
     Long refreshTokenExpiration;
 
     private SecretKey getSecretKey() {
         byte[] keyBytes = Base64.from(jwtKey).decode();
-        return new SecretKeySpec(keyBytes, 0, keyBytes.length, JWT_ALGORITHM.getName());
-    }
-
-    public Jwt checkValidRefreshToken(String token) {
-        var jwtDecoder = NimbusJwtDecoder.withSecretKey(getSecretKey()).macAlgorithm(SecurityUtils.JWT_ALGORITHM)
-                .build();
-        try {
-            return jwtDecoder.decode(token);
-        } catch (Exception ex) {
-            throw ex;
-        }
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String createAccessToken(String email, ResLoginDTO dto, String sessionId, Role role) {
@@ -146,13 +138,33 @@ public class SecurityUtils {
         return null;
     }
 
+    public Claims parseRefreshTokenIgnoreExpired(String token) {
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(getSecretKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (ExpiredJwtException ex) {
+            return ex.getClaims();
+        }
+    }
+
+    public Claims parseRefreshToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSecretKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
     public String createRefreshToken(String email, ResLoginDTO dto) {
         var userToken = new ResLoginDTO.UserInsideToken();
         userToken.setEmail(dto.getUser().getEmail());
         userToken.setId(dto.getUser().getId());
         userToken.setName(dto.getUser().getName());
         var now = Instant.now();
-        var validity = now.plus(this.accessTokenExpiration, ChronoUnit.SECONDS);
+        var validity = now.plus(refreshTokenExpiration, ChronoUnit.SECONDS);
         var claims = JwtClaimsSet.builder()
                 .issuedAt(now)
                 .expiresAt(validity)

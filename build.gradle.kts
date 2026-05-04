@@ -18,6 +18,9 @@ repositories {
 }
 
 dependencies {
+    implementation("io.jsonwebtoken:jjwt-api:0.11.5")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
     implementation("org.mapstruct:mapstruct:1.6.2")
     implementation("com.cloudinary:cloudinary-http5:2.0.0")
     annotationProcessor("org.mapstruct:mapstruct-processor:1.6.2")

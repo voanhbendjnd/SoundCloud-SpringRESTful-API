@@ -40,6 +40,10 @@ public class User extends BaseEntity {
     Role role;
     @Column(columnDefinition = "MEDIUMTEXT")
     String refreshToken;
+    @Column(columnDefinition = "MEDIUMTEXT")
+    String previousRefreshToken;
+    @Column(name = "last_refresh_time")
+    Date lastRefreshTime;
     @Column(name = "one_time_password")
     String oneTimePassword;
     @Column(name = "otp_request_time")
@@ -61,6 +65,8 @@ public class User extends BaseEntity {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Playlist> playlists;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<HistoryTrack> historyTracks;
 
     public boolean isOTPRequired() {
         if (this.getOneTimePassword() == null) {

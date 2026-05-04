@@ -4,11 +4,13 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import djnd.project.SoundCloud.utils.constains.ActionToken;
 import djnd.project.SoundCloud.utils.constains.LoginType;
 import djnd.project.SoundCloud.utils.error.PermissionException;
 import jakarta.annotation.Nonnull;
@@ -153,6 +155,8 @@ public class UserService {
         var user = this.userRepository.findByEmail(email);
         if (user != null) {
             user.setRefreshToken(refreshToken);
+            user.setPreviousRefreshToken(null);
+            user.setLastRefreshTime(null);
             this.userRepository.save(user);
         }
     }
@@ -189,42 +193,76 @@ public class UserService {
     /*
      * condition: delete (delete refresh token), refresh (update res login dto)
      */
-    public ResLoginDTO handleRefreshTokenWithCondition(String refreshToken, String condition) {
+    public ResLoginDTO handleRefreshTokenWithCondition(String refreshToken, ActionToken action) {
         var res = new ResLoginDTO();
-        var userLogin = new ResLoginDTO.UserLogin();
-        var decodedToken = this.securityUtils.checkValidRefreshToken(refreshToken);
-        var email = decodedToken.getSubject();
+        var claims = this.securityUtils.parseRefreshTokenIgnoreExpired(refreshToken);
+        var expiration = claims.getExpiration();
+
+        if (expiration.before(new Date())) {
+            throw new BadCredentialsException("Refresh token expired");
+        }
+
+        var email = claims.getSubject();
         if (email == null) {
-            throw new BadCredentialsException("Refresh Token Invalid!");
+            throw new BadCredentialsException("Email get from refresh token null!");
         }
-        var user = this.userRepository.findByEmailAndRefreshToken(email, refreshToken);
-        if (user != null) {
-            if (condition.equals("delete")) {
-                this.sessionManager.invalidateSession(email);
-                updateRefreshTokenByEmail(email, null);
-                return new ResLoginDTO();
-            }
-            if (condition.equals("refresh")) {
-                userLogin.setEmail(email);
-                userLogin.setId(user.getId());
-                userLogin.setName(user.getName());
-                userLogin.setRole(user.getRole().getName());
-                userLogin.setType(user.getType() != null ? user.getType() : "SYSTEM");
-                userLogin.setAvatar(user.getAvatar());
-                userLogin.setUsername(user.getUsername());
-                res.setUser(userLogin);
-                var sessionID = this.sessionManager.createNewSession(user);
-                var accessToken = this.securityUtils.createAccessToken(email, res, sessionID, user.getRole());
-                res.setAccessToken(accessToken);
-                res.setExpiresIn(expiresIn);
-                var newRefreshToken = this.securityUtils.createRefreshToken(email, res);
-                updateRefreshTokenByEmail(email, newRefreshToken);
-                res.setRefreshToken(newRefreshToken);
-                return res;
-            }
+
+        var userOptional = this.userRepository.findWithDetailByEmail(email);
+        if (userOptional.isEmpty()) {
+            throw new BadCredentialsException("User not found!");
         }
-        throw new BadCredentialsException("Refresh Token Invalid!");
+
+        var user = userOptional.get();
+        // boolean isCurrentToken = refreshToken.equals(user.getRefreshToken());
+        // boolean isPreviousToken =
+        // refreshToken.equals(user.getPreviousRefreshToken());
+        // boolean isWithinGracePeriod = isPreviousToken &&
+        // user.getLastRefreshTime() != null &&
+        // Math.abs(System.currentTimeMillis() - user.getLastRefreshTime().getTime()) <
+        // 30000;
+        // if (isCurrentToken || isWithinGracePeriod) {
+        if (action == ActionToken.DELETE) {
+            this.sessionManager.invalidateSession(email);
+            updateRefreshTokenByEmail(email, null);
+            return new ResLoginDTO();
+        }
+
+        if (action == ActionToken.REFRESH) {
+            var userLogin = new ResLoginDTO.UserLogin();
+            userLogin.setEmail(email);
+            userLogin.setId(user.getId());
+            userLogin.setName(user.getName());
+            userLogin.setRole(user.getRole().getName());
+            userLogin.setType(user.getType() != null ? user.getType() : LoginType.SYSTEM.toString());
+            userLogin.setAvatar(user.getAvatar());
+            userLogin.setUsername(user.getUsername());
+            res.setUser(userLogin);
+
+            var sessionID = this.sessionManager.createNewSession(user);
+            var accessToken = this.securityUtils.createAccessToken(email, res, sessionID, user.getRole());
+            res.setAccessToken(accessToken);
+            res.setExpiresIn(expiresIn);
+
+            var newRefreshToken = this.securityUtils.createRefreshToken(email, res);
+
+            // if (isCurrentToken) {
+            // user.setPreviousRefreshToken(refreshToken);
+            // user.setLastRefreshTime(new Date());
+            // }
+            user.setRefreshToken(newRefreshToken);
+            this.userRepository.save(user);
+
+            res.setRefreshToken(newRefreshToken);
+            return res;
+        } else {
+            throw new BadCredentialsException("Action Invalid!");
+        }
+
     }
+
+    // throw new BadCredentialsException("Refresh Token Invalid or already
+    // rotated!");
+    // }
 
     @CacheEvict(value = "userAccount", key = "'USER_ACCOUNT_' + #email")
     public void logout(String email) {

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import djnd.project.SoundCloud.domain.entity.Track;
+import djnd.project.SoundCloud.domain.it.ResHistoryInter;
 import djnd.project.SoundCloud.domain.it.SearchInterface;
 import djnd.project.SoundCloud.domain.it.TrackUploader;
 
@@ -70,4 +71,9 @@ public interface TrackRepository extends JpaRepository<Track, Long>, JpaSpecific
     @EntityGraph(attributePaths = { "user" })
     Page<Track> findAll(Specification<Track> spec, Pageable pageable);
 
+    @Query(value = "select t.id as id, t.title as title, t.imgUrl as imgUrl, t.trackUrl as trackUrl, t.countPlay as countPlays, t.countLike as countLikes, u.name as uploader from Track t join t.user u where t.id = :trackId")
+    ResHistoryInter getTrackForHistoryById(@Param("trackId") Long trackId);
+
+    @Query(value = "select t.id as id, t.title as title, t.imgUrl as imgUrl, t.trackUrl as trackUrl, t.countPlay as countPlays, t.countLike as countLikes, u.name as uploader from Track t join t.user u join t.historyTracks h where t.id in :trackIds order by h.listenedAt desc")
+    List<ResHistoryInter> getTracksForHistoryIdIn(@Param("trackIds") List<Long> trackIds, Pageable pageable);
 }
