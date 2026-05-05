@@ -26,9 +26,9 @@ public class TrackResponse {
     @FieldDefaults(level = AccessLevel.PRIVATE)
     public static class Uploader {
         Long id;
-        String email;
+        // String email;
         String name;
-        String role;
+        // String role;
         String avatar;
     }
 }

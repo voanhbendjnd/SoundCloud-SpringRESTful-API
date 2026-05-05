@@ -1,5 +1,6 @@
 package djnd.project.SoundCloud.services;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
@@ -28,14 +29,27 @@ public class HistoryService {
 
     public ResHistoryInter saveHistoryTrackUserListened(HistoryDTO dto) {
         var userId = SecurityUtils.getCurrentUserIdOrNull();
+        var historyTrack = this.historyTrackRepository.findByUserIdAndTrackId(userId, dto.trackId());
+        if (historyTrack != null) {
+            historyTrack.setListenedAt(LocalDateTime.now());
+            var currentDurationListened = historyTrack.getDurationListened() != null
+                    ? historyTrack.getDurationListened()
+                    : 0;
+            if (dto.durationListened() > currentDurationListened) {
+                historyTrack.setDurationListened(dto.durationListened());
+            }
+            this.historyTrackRepository.save(historyTrack);
+            return this.trackRepository.getTrackForHistoryById(historyTrack.getId());
+        }
         var user = this.userRepository.getReferenceById(userId);
         var track = this.trackRepository.getReferenceById(dto.trackId());
+
         if (user != null && track != null) {
-            var historyTrack = new HistoryTrack();
-            historyTrack.setDurationListened(dto.durationListend());
-            historyTrack.setTrack(track);
-            historyTrack.setUser(user);
-            this.historyTrackRepository.save(historyTrack);
+            var newHistoryTrack = new HistoryTrack();
+            newHistoryTrack.setDurationListened(dto.durationListened());
+            newHistoryTrack.setTrack(track);
+            newHistoryTrack.setUser(user);
+            this.historyTrackRepository.save(newHistoryTrack);
             return this.trackRepository.getTrackForHistoryById(dto.trackId());
         }
         throw new ResourceNotFoundException("Track ID or User ID", dto.trackId() + " " + userId);
@@ -44,7 +58,6 @@ public class HistoryService {
     public List<ResHistoryInter> getHistoryTrackListened() {
         var userId = SecurityUtils.getCurrentUserIdOrNull();
         Pageable pageable = PageRequest.of(0, 5);
-        var trackIds = this.historyTrackRepository.getTrackIdsByUserId(userId);
-        return this.trackRepository.getTracksForHistoryIdIn(trackIds, pageable);
+        return this.historyTrackRepository.getMyTrackListened(userId, pageable);
     }
 }

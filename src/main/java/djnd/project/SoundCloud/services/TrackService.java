@@ -91,8 +91,6 @@ public class TrackService {
         track.setTrackUrl(audioUploadResult.getSecureUrl());
         track.setTrackPublicId(audioUploadResult.getPublicId());
         this.trackRepository.save(track);
-
-        // Generate peaks asynchronously
         this.waveformService.generatePeaksForTrack(track.getId());
     }
 
@@ -225,12 +223,12 @@ public class TrackService {
 
         var user = x.getUser();
         var uploader = new TrackResponse.Uploader();
-        uploader.setEmail(user.getEmail());
+        // uploader.setEmail(user.getEmail());
         uploader.setId(user.getId());
         uploader.setName(user.getName());
-        if (user.getRole() != null) {
-            uploader.setRole(user.getRole().getName());
-        }
+        // if (user.getRole() != null) {
+        // uploader.setRole(user.getRole().getName());
+        // }
         result.setUploader(uploader);
         return result;
     }

@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -36,6 +37,11 @@ public class HistoryTrack {
 
     @PrePersist
     public void handleCreateTimeAfterCreate() {
+        this.listenedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void handleCreateTimeAfterUpdate() {
         this.listenedAt = LocalDateTime.now();
     }
 }
