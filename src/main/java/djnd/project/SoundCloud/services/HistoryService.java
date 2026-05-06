@@ -1,5 +1,6 @@
 package djnd.project.SoundCloud.services;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,23 +60,27 @@ public class HistoryService {
                 """);
 
         List<Object> params = new ArrayList<>();
-
         for (int i = 0; i < list.size(); i++) {
-            sql.append("(?, ?, ?, NOW())");
+            if (list.get(i).trackId() == null)
+                continue;
+            sql.append("(?, ?, ?, ?)");
             if (i < list.size() - 1)
                 sql.append(",");
+            var now = LocalDateTime.now();
 
             params.add(userId);
             params.add(list.get(i).trackId());
-            params.add(Math.max(list.get(i).durationListened(), 0));
+            Integer duration = list.get(i).durationListened();
+            params.add(Math.max(duration != null ? duration : 0, 0));
+            params.add(now);
         }
 
         sql.append("""
                     ON DUPLICATE KEY UPDATE
                     duration_listened = GREATEST(duration_listened, VALUES(duration_listened)),
-                    listened_at = NOW()
+                    listened_at = ?
                 """);
-
+        params.add(LocalDateTime.now());
         jdbcTemplate.update(sql.toString(), params.toArray());
     }
 
