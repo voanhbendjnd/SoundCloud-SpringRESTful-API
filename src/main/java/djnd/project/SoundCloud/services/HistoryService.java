@@ -1,18 +1,18 @@
 package djnd.project.SoundCloud.services;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import djnd.project.SoundCloud.domain.entity.HistoryTrack;
 import djnd.project.SoundCloud.domain.it.ResHistoryInter;
 import djnd.project.SoundCloud.domain.request.HistoryDTO;
 import djnd.project.SoundCloud.repositories.HistoryTrackRepository;
 import djnd.project.SoundCloud.repositories.TrackRepository;
-import djnd.project.SoundCloud.repositories.UserRepository;
 import djnd.project.SoundCloud.utils.SecurityUtils;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
 import lombok.AccessLevel;
@@ -23,36 +23,60 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequiredArgsConstructor
 public class HistoryService {
-    UserRepository userRepository;
     TrackRepository trackRepository;
     HistoryTrackRepository historyTrackRepository;
+    JdbcTemplate jdbcTemplate;
 
+    /*
+     * cause modifying must method add transaction
+     */
+    @Transactional
     public ResHistoryInter saveHistoryTrackUserListened(HistoryDTO dto) {
         var userId = SecurityUtils.getCurrentUserIdOrNull();
-        var historyTrack = this.historyTrackRepository.findByUserIdAndTrackId(userId, dto.trackId());
-        if (historyTrack != null) {
-            historyTrack.setListenedAt(LocalDateTime.now());
-            var currentDurationListened = historyTrack.getDurationListened() != null
-                    ? historyTrack.getDurationListened()
-                    : 0;
-            if (dto.durationListened() > currentDurationListened) {
-                historyTrack.setDurationListened(dto.durationListened());
-            }
-            this.historyTrackRepository.save(historyTrack);
-            return this.trackRepository.getTrackForHistoryById(historyTrack.getId());
+        if (userId == null) {
+            return null;
         }
-        var user = this.userRepository.getReferenceById(userId);
-        var track = this.trackRepository.getReferenceById(dto.trackId());
+        if (dto.trackId() == null || dto.durationListened() == null) {
+            throw new IllegalArgumentException("Invalid history data");
+        }
+        int duration = Math.max(dto.durationListened(), 0);
+        this.historyTrackRepository.upsertHistory(userId, dto.trackId(), duration);
+        return this.trackRepository.getTrackForHistoryById(dto.trackId());
+    }
 
-        if (user != null && track != null) {
-            var newHistoryTrack = new HistoryTrack();
-            newHistoryTrack.setDurationListened(dto.durationListened());
-            newHistoryTrack.setTrack(track);
-            newHistoryTrack.setUser(user);
-            this.historyTrackRepository.save(newHistoryTrack);
-            return this.trackRepository.getTrackForHistoryById(dto.trackId());
+    @Transactional
+    public void upsertBatchHistory(List<HistoryDTO> list) {
+        var userId = SecurityUtils.getCurrentUserIdOrNull();
+        if (userId == null) {
+            throw new ResourceNotFoundException("User ID", userId);
         }
-        throw new ResourceNotFoundException("Track ID or User ID", dto.trackId() + " " + userId);
+        if (list == null || list.isEmpty())
+            return;
+
+        StringBuilder sql = new StringBuilder("""
+                    INSERT INTO history_tracks (user_id, track_id, duration_listened, listened_at)
+                    VALUES
+                """);
+
+        List<Object> params = new ArrayList<>();
+
+        for (int i = 0; i < list.size(); i++) {
+            sql.append("(?, ?, ?, NOW())");
+            if (i < list.size() - 1)
+                sql.append(",");
+
+            params.add(userId);
+            params.add(list.get(i).trackId());
+            params.add(Math.max(list.get(i).durationListened(), 0));
+        }
+
+        sql.append("""
+                    ON DUPLICATE KEY UPDATE
+                    duration_listened = GREATEST(duration_listened, VALUES(duration_listened)),
+                    listened_at = NOW()
+                """);
+
+        jdbcTemplate.update(sql.toString(), params.toArray());
     }
 
     public List<ResHistoryInter> getHistoryTrackListened() {

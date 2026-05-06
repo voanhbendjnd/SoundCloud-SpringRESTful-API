@@ -33,8 +33,9 @@ public class SearchController {
     @GetMapping
     @ApiMessage("Fetch data search by query")
     public ResponseEntity<?> getDataSearch(@Filter Specification<Track> spec, Pageable pageable,
-            @RequestParam(value = "q", required = false) String q) {
-        return ResponseEntity.ok(this.trackService.fetchAllWithPagination(spec, pageable, null, q));
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "pageToken", required = false) String pageToken) {
+        return ResponseEntity.ok(this.trackService.fetchAllWithPagination(spec, pageable, null, q, pageToken));
     }
 
 }

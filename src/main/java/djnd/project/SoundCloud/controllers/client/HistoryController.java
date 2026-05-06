@@ -1,5 +1,7 @@
 package djnd.project.SoundCloud.controllers.client;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,8 +32,9 @@ public class HistoryController {
 
     @PostMapping
     @ApiMessage("Save history lisened track for user")
-    public ResponseEntity<?> saveHistory(@RequestBody HistoryDTO historyDTO) {
+    public ResponseEntity<?> saveHistory(@RequestBody List<HistoryDTO> historyDTO) {
+        this.historyService.upsertBatchHistory(historyDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(this.historyService.saveHistoryTrackUserListened(historyDTO));
+                .body("Save track to history success");
     }
 }

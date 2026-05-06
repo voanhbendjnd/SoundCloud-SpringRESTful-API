@@ -12,13 +12,16 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 @Entity
-@Table(name = "history_tracks")
+@Table(name = "history_tracks", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "user_id", "track_id" })
+})
 @Getter
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)

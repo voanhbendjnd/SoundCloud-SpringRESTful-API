@@ -30,6 +30,7 @@ import djnd.project.SoundCloud.domain.request.TrackDTO;
 import djnd.project.SoundCloud.domain.response.ResSearch;
 import djnd.project.SoundCloud.domain.response.ResTrackLike;
 import djnd.project.SoundCloud.domain.response.ResultPaginationDTO;
+import djnd.project.SoundCloud.domain.response.SearchFallbackResponse;
 import djnd.project.SoundCloud.domain.response.TrackResponse;
 import djnd.project.SoundCloud.redis.services.CountPlayTrack;
 import djnd.project.SoundCloud.repositories.CategoryRepository;
@@ -54,6 +55,7 @@ public class TrackService {
     final CountPlayTrack countPlayTrack;
     final JdbcTemplate jdbcTemplate;
     final WaveformService waveformService;
+    final YouTubeService youtubeService;
     @Value("${djnd.soundcloud.location.folder.img}")
     private String imgFolder;
     @Value("${djnd.soundcloud.location.folder.temp}")
@@ -168,8 +170,8 @@ public class TrackService {
         throw new PermissionException("You do not have permission!");
     }
 
-    public ResultPaginationDTO fetchAllWithPagination(Specification<Track> spec, Pageable pageable, String category,
-            String qStr) {
+    public SearchFallbackResponse<?> fetchAllWithPagination(Specification<Track> spec, Pageable pageable, String category,
+            String qStr, String pageToken) {
         var res = new ResultPaginationDTO();
         var meta = new ResultPaginationDTO.Meta();
         if (category != null && !category.isEmpty()) {
@@ -201,7 +203,17 @@ public class TrackService {
                 .map(x -> convertToResponse(x, userId))
                 .toList());
 
-        return res;
+        if (res.getResult() == null || ((List<?>) res.getResult()).isEmpty()) {
+            if (qStr != null && !qStr.isBlank()) {
+                var youtubeResponse = this.youtubeService.searchVideos(qStr, pageToken);
+                if (youtubeResponse.getResult() == null || youtubeResponse.getResult().isEmpty()) {
+                    return new SearchFallbackResponse<>("empty", new ArrayList<>());
+                }
+                return new SearchFallbackResponse<>("youtube", List.of(youtubeResponse));
+            }
+        }
+
+        return new SearchFallbackResponse<>("local", List.of(res));
     }
 
     private TrackResponse convertToResponse(Track x, Long userIdLogin) {
@@ -384,9 +396,9 @@ public class TrackService {
 
     }
 
-    public List<ResSearch> search(String key) {
+    public SearchFallbackResponse<?> search(String key) {
         Pageable pageable = PageRequest.of(0, 9);
-        return this.trackRepository.searchByKey(key, pageable).stream().map(x -> {
+        var localResults = this.trackRepository.searchByKey(key, pageable).stream().map(x -> {
             var res = new ResSearch();
             res.setId(x.getId());
             res.setImgUrl(x.getImgUrl());
@@ -396,6 +408,15 @@ public class TrackService {
             return res;
         }).toList();
 
+        if (localResults.isEmpty()) {
+            var youtubeResponse = this.youtubeService.searchVideos(key, null);
+            if (youtubeResponse.getResult() == null || youtubeResponse.getResult().isEmpty()) {
+                return new SearchFallbackResponse<>("empty", new ArrayList<>());
+            }
+            return new SearchFallbackResponse<>("youtube", List.of(youtubeResponse));
+        }
+
+        return new SearchFallbackResponse<>("local", localResults);
     }
 
 }

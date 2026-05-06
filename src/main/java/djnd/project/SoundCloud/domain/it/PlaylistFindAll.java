@@ -12,4 +12,6 @@ public interface PlaylistFindAll {
     String getCreatedBy();
 
     Boolean getIsPublic();
+
+    Long getUserId();
 }

@@ -118,7 +118,7 @@ public class TrackController {
     @GetMapping
     public ResponseEntity<?> fetchAllWithPagination(@Filter Specification<Track> spec, Pageable pageable,
             @RequestParam(value = "category", required = false) String category) {
-        return ResponseEntity.ok(this.trackService.fetchAllWithPagination(spec, pageable, category, null));
+        return ResponseEntity.ok(this.trackService.fetchAllWithPagination(spec, pageable, category, null, null));
     }
 
     @GetMapping("/comments")
