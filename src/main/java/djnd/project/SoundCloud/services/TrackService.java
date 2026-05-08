@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import djnd.project.SoundCloud.domain.entity.Category;
 import djnd.project.SoundCloud.domain.entity.User;
@@ -158,8 +159,12 @@ public class TrackService {
         var track = this.trackRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Track ID", "#" + id));
         var userId = SecurityUtils.getCurrentUserIdOrNull();
+        var res = convertToResponse(track);
+        if (userId != null) {
+            res.setIsLiked(this.trackLikeRepository.existsByUserIdAndTrackId(userId, id));
+        }
+        return res;
 
-        return convertToResponse(track, userId);
     }
 
     public boolean isLikedWhenLogin(Long id) throws PermissionException {
@@ -170,7 +175,8 @@ public class TrackService {
         throw new PermissionException("You do not have permission!");
     }
 
-    public SearchFallbackResponse<?> fetchAllWithPagination(Specification<Track> spec, Pageable pageable, String category,
+    public SearchFallbackResponse<?> fetchAllWithPagination(Specification<Track> spec, Pageable pageable,
+            String category,
             String qStr, String pageToken) {
         var res = new ResultPaginationDTO();
         var meta = new ResultPaginationDTO.Meta();
@@ -198,10 +204,16 @@ public class TrackService {
         meta.setTotal(page.getTotalElements());
         res.setMeta(meta);
         var userId = SecurityUtils.getCurrentUserIdOrNull();
-
-        res.setResult(page.getContent().stream()
-                .map(x -> convertToResponse(x, userId))
-                .toList());
+        var finalData = page.getContent().stream()
+                .map(x -> convertToResponse(x))
+                .toList();
+        if (userId != null) {
+            var trackIds = finalData.stream().map(x -> x.getId()).toList();
+            var likeTrackIdsSet = this.trackLikeRepository.getIdTracksByUserId(userId, trackIds).stream()
+                    .collect(Collectors.toSet());
+            finalData.forEach(x -> x.setIsLiked(likeTrackIdsSet.contains(x.getId())));
+        }
+        res.setResult(finalData);
 
         if (res.getResult() == null || ((List<?>) res.getResult()).isEmpty()) {
             if (qStr != null && !qStr.isBlank()) {
@@ -216,11 +228,8 @@ public class TrackService {
         return new SearchFallbackResponse<>("local", List.of(res));
     }
 
-    private TrackResponse convertToResponse(Track x, Long userIdLogin) {
+    protected TrackResponse convertToResponse(Track x) {
         var result = new TrackResponse();
-        if (userIdLogin != null) {
-            result.setIsLiked(this.trackLikeRepository.existsByUserIdAndTrackId(userIdLogin, x.getId()));
-        }
         result.setCategory(x.getCategory().getName());
         result.setCountLike(x.getCountLike());
         result.setCountPlay(x.getCountPlay());
@@ -259,7 +268,13 @@ public class TrackService {
         meta.setTotal(page.getTotalElements());
         res.setMeta(meta);
         var userLoginId = SecurityUtils.getCurrentUserIdOrNull();
-        res.setResult(page.getContent().stream().map(x -> convertToResponse(x, userLoginId)).toList());
+        var finalData = page.getContent().stream().map(this::convertToResponse).toList();
+        if (userLoginId != null) {
+            var trackIds = finalData.stream().map(x -> x.getId()).toList();
+            var idsTrackLiked = this.trackLikeRepository.getIdTracksByUserId(userLoginId, trackIds);
+            finalData.forEach(x -> x.setIsLiked(idsTrackLiked.contains(x.getId())));
+        }
+        res.setResult(finalData);
         return res;
     }
 
@@ -347,10 +362,8 @@ public class TrackService {
         meta.setTotal(myTracks.getTotalElements());
         res.setMeta(meta);
         // var userId = SecurityUtils.getCurrentUserIdOrNull();
-        var resMyTracks = myTracks.getContent().stream().map(x -> convertToResponse(x, null)).toList();
-        for (var x : resMyTracks) {
-            x.setIsLiked(true);
-        }
+        var resMyTracks = myTracks.getContent().stream().map(x -> convertToResponse(x)).toList();
+        resMyTracks.forEach(x -> x.setIsLiked(true));
         // var itrackIds = this.trackLikeRepository.findLikedTrackIds(user.getId(),
         // resMyTracks.stream().map(x -> x.getId()).toList());
         res.setResult(resMyTracks);
@@ -370,15 +383,6 @@ public class TrackService {
         res.setUploader(uploader);
         return res;
     }
-
-    // public String getResTrackUrlId(String trackUrl) {
-    // var keyCut = "/upload";
-    // var index = trackUrl.indexOf(keyCut);
-    // if (index != -1) {
-    // return trackUrl.substring(index + keyCut.length());
-    // }
-    // throw new ResourceNotFoundException("Track URL", trackUrl);
-    // }
 
     public boolean checkIdAndAudioFile(Long trackId, Long trackIdLast, String trackUrl) {
         if (!this.trackRepository.existsByTrackUrlAndId("https://res.cloudinary.com/dddppjhly/video/upload" + trackUrl,
@@ -417,6 +421,29 @@ public class TrackService {
         }
 
         return new SearchFallbackResponse<>("local", localResults);
+    }
+
+    public ResultPaginationDTO getRecommendations(String category, List<Long> excludeIds, Pageable pageable) {
+        if (excludeIds == null) excludeIds = List.of(-1L);
+        else if (excludeIds.isEmpty()) excludeIds.add(-1L);
+
+        Page<Track> page = this.trackRepository.findByByCategoryAndIdNotIn(category, excludeIds, pageable);
+        
+        if (page.getContent().isEmpty()) {
+            page = this.trackRepository.findAllByIdNotIn(excludeIds, pageable);
+        }
+
+        var res = new ResultPaginationDTO();
+        var meta = new ResultPaginationDTO.Meta();
+        meta.setPage(pageable.getPageNumber() + 1);
+        meta.setPageSize(pageable.getPageSize());
+        meta.setPages(page.getTotalPages());
+        meta.setTotal(page.getTotalElements());
+        res.setMeta(meta);
+
+        var finalData = page.getContent().stream().map(this::convertToResponse).toList();
+        res.setResult(finalData);
+        return res;
     }
 
 }

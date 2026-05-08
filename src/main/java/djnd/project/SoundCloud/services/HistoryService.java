@@ -2,17 +2,23 @@ package djnd.project.SoundCloud.services;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import djnd.project.SoundCloud.domain.entity.Track;
 import djnd.project.SoundCloud.domain.it.ResHistoryInter;
 import djnd.project.SoundCloud.domain.request.HistoryDTO;
+import djnd.project.SoundCloud.domain.response.ResultPaginationDTO;
 import djnd.project.SoundCloud.repositories.HistoryTrackRepository;
+import djnd.project.SoundCloud.repositories.TrackLikeRepository;
 import djnd.project.SoundCloud.repositories.TrackRepository;
 import djnd.project.SoundCloud.utils.SecurityUtils;
 import djnd.project.SoundCloud.utils.error.ResourceNotFoundException;
@@ -27,6 +33,8 @@ public class HistoryService {
     TrackRepository trackRepository;
     HistoryTrackRepository historyTrackRepository;
     JdbcTemplate jdbcTemplate;
+    TrackService trackService;
+    TrackLikeRepository trackLikeRepository;
 
     /*
      * cause modifying must method add transaction
@@ -89,4 +97,37 @@ public class HistoryService {
         Pageable pageable = PageRequest.of(0, 5);
         return this.historyTrackRepository.getMyTrackListened(userId, pageable);
     }
+
+    public ResultPaginationDTO getAllForMainPageHistory(Specification<Track> spec, Pageable pageable) {
+        var res = new ResultPaginationDTO();
+        var meta = new ResultPaginationDTO.Meta();
+        var userId = SecurityUtils.getCurrentUserIdOrNull();
+        if (userId == null) {
+            throw new BadCredentialsException("You must be login for feature!");
+        }
+        var myHistories = this.historyTrackRepository.getTrackHistoryWithNative(userId, pageable);
+        int requestedPage = pageable.getPageNumber() + 1;
+        int totalPages = myHistories.getTotalPages();
+        if (requestedPage > totalPages && totalPages > 0) {
+            meta.setPage(requestedPage);
+            meta.setPageSize(pageable.getPageSize());
+            meta.setPages(totalPages);
+            meta.setTotal(myHistories.getTotalElements());
+            res.setMeta(meta);
+            res.setResult(Collections.emptyList());
+            return res;
+        }
+        meta.setPage(requestedPage);
+        meta.setPageSize(pageable.getPageSize());
+        meta.setPages(totalPages);
+        meta.setTotal(myHistories.getTotalElements());
+        res.setMeta(meta);
+        var finalData = myHistories.getContent().stream().map(this.trackService::convertToResponse).toList();
+        var trackIds = finalData.stream().map(x -> x.getId()).toList();
+        var idsTrackLikes = this.trackLikeRepository.getIdTracksByUserId(userId, trackIds);
+        finalData.forEach(x -> x.setIsLiked(idsTrackLikes.contains(x.getId())));
+        res.setResult(finalData);
+        return res;
+    }
+
 }

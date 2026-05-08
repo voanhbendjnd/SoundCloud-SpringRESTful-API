@@ -2,6 +2,8 @@ package djnd.project.SoundCloud.services;
 
 import djnd.project.SoundCloud.domain.response.YoutubeSearchDTO;
 import djnd.project.SoundCloud.domain.response.YoutubeSearchResponseDTO;
+
+import org.apache.commons.text.StringEscapeUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -31,8 +33,9 @@ public class YouTubeService {
 
     @Cacheable(value = "youtubeSearch", key = "#keyword + '-' + (#pageToken != null ? #pageToken : 'first')")
     public YoutubeSearchResponseDTO searchVideos(String keyword, String pageToken) {
-        if (keyword == null) return new YoutubeSearchResponseDTO(new ArrayList<>(), new YoutubeSearchResponseDTO.Meta(null, 0));
-        
+        if (keyword == null)
+            return new YoutubeSearchResponseDTO(new ArrayList<>(), new YoutubeSearchResponseDTO.Meta(null, 0));
+
         keyword = keyword.trim().toLowerCase();
         if (keyword.length() > 100 || keyword.isEmpty()) {
             return new YoutubeSearchResponseDTO(new ArrayList<>(), new YoutubeSearchResponseDTO.Meta(null, 0));
@@ -41,8 +44,9 @@ public class YouTubeService {
         try {
             RestTemplate restTemplate = new RestTemplate();
             String encodedKeyword = URLEncoder.encode(keyword, StandardCharsets.UTF_8.toString());
-            String url = "https://www.googleapis.com/youtube/v3/search?part=snippet&q=" + encodedKeyword + "&type=video&maxResults=10&key=" + apiKey;
-            
+            String url = "https://www.googleapis.com/youtube/v3/search?part=snippet&q=" + encodedKeyword
+                    + "&type=video&maxResults=10&key=" + apiKey;
+
             if (pageToken != null && !pageToken.isEmpty()) {
                 url += "&pageToken=" + pageToken;
             }
@@ -50,22 +54,33 @@ public class YouTubeService {
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
             JsonNode root = objectMapper.readTree(response.getBody());
             JsonNode items = root.path("items");
-            
+
             String nextPageToken = root.path("nextPageToken").asText(null);
             int totalResults = root.path("pageInfo").path("totalResults").asInt(0);
-            
+
             List<YoutubeSearchDTO> videos = new ArrayList<>();
             List<String> videoIds = new ArrayList<>();
 
             if (items.isArray()) {
                 for (JsonNode item : items) {
                     String videoId = item.path("id").path("videoId").asText("");
-                    if (videoId.isEmpty()) continue; // Skip channels, playlists, etc.
-                    
+                    if (videoId.isEmpty())
+                        continue; // Skip channels, playlists, etc.
+
                     String title = item.path("snippet").path("title").asText();
+                    title = StringEscapeUtils.unescapeHtml4(title);
+                    title = title
+                            .replace("&#39;", "'")
+                            .replace("&amp;", "&")
+                            .replace("&quot;", "\"")
+                            .replace("&lt;", "<")
+                            .replace("&gt;", ">")
+                            .replace("&apos;", "'")
+                            .replace("&#34;", "\"");
+                    // title.replace("&#39;", "'");
                     String thumbnail = item.path("snippet").path("thumbnails").path("default").path("url").asText();
                     String channel = item.path("snippet").path("channelTitle").asText();
-                    
+
                     videos.add(new YoutubeSearchDTO(videoId, title, thumbnail, channel, 0));
                     videoIds.add(videoId);
                 }
@@ -74,7 +89,8 @@ public class YouTubeService {
             // Fetch Durations
             if (!videoIds.isEmpty()) {
                 String idsString = String.join(",", videoIds);
-                String videoUrl = "https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=" + idsString + "&key=" + apiKey;
+                String videoUrl = "https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=" + idsString
+                        + "&key=" + apiKey;
                 ResponseEntity<String> videoResponse = restTemplate.getForEntity(videoUrl, String.class);
                 JsonNode videoRoot = objectMapper.readTree(videoResponse.getBody());
                 JsonNode videoItems = videoRoot.path("items");
@@ -84,11 +100,12 @@ public class YouTubeService {
                         JsonNode vItem = videoItems.get(i);
                         String vId = vItem.path("id").asText();
                         String durationIso = vItem.path("contentDetails").path("duration").asText();
-                        
+
                         int durationSeconds = 0;
                         try {
                             durationSeconds = (int) Duration.parse(durationIso).getSeconds();
-                        } catch (Exception ignored) {}
+                        } catch (Exception ignored) {
+                        }
 
                         for (YoutubeSearchDTO v : videos) {
                             if (v.getVideoId().equals(vId)) {

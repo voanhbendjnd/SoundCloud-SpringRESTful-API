@@ -42,6 +42,7 @@ dependencies {
     runtimeOnly("com.mysql:mysql-connector-j")
     implementation("org.apache.poi:poi:5.2.5")
     implementation("org.apache.poi:poi-ooxml:5.2.5")
+    implementation("org.apache.commons:commons-text:1.12.0")
 }
 
 tasks.withType<Test> {

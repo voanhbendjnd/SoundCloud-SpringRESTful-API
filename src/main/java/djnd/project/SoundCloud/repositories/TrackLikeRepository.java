@@ -20,6 +20,9 @@ public interface TrackLikeRepository extends JpaRepository<TrackLike, Long> {
 
     // void deleteByUserIdAndTrackId(Long userId, Long trackId);
 
+    @Query(value = "select tl.track.id from TrackLike tl where tl.user.id = :userId and tl.track.id in :trackIds")
+    List<Long> getIdTracksByUserId(@Param("userId") Long id, @Param("trackIds") List<Long> trackIds);
+
     TrackLike findByUserIdAndTrackId(Long userId, Long trackId);
 
     /**

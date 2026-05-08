@@ -9,9 +9,14 @@ public interface ResHistoryInter {
 
     String getTrackUrl();
 
-    Integer getCountLikes();
+    Integer getCountLike();
 
-    Long getCountPlays();
+    Long getCountPlay();
 
     String getUploader();
+
+    String getPeaks();
+
+    Long getUploaderId();
+
 }

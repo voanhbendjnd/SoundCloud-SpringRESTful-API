@@ -1,7 +1,8 @@
-package djnd.project.SoundCloud.controllers.admin;
+package djnd.project.SoundCloud.controllers.client;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Pageable;
@@ -209,6 +210,14 @@ public class TrackController {
             }
         }
         return ResponseEntity.ok(this.trackService.getTrackUrlById(trackId));
+    }
+
+    @GetMapping("/recommendations")
+    public ResponseEntity<?> getRecommendations(
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "excludeIds", required = false) List<Long> excludeIds,
+            Pageable pageable) {
+        return ResponseEntity.ok(this.trackService.getRecommendations(category, excludeIds, pageable));
     }
 
 }

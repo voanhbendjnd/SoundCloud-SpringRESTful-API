@@ -2,6 +2,7 @@ package djnd.project.SoundCloud.repositories;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -11,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import djnd.project.SoundCloud.domain.entity.HistoryTrack;
+import djnd.project.SoundCloud.domain.entity.Track;
 import djnd.project.SoundCloud.domain.it.ResHistoryInter;
 
 @Repository
@@ -20,7 +22,7 @@ public interface HistoryTrackRepository
         List<Long> getTrackIdsByUserId(@Param("userId") Long userId);
 
         @Query(value = """
-                        select ht.track.id as id, ht.track.title as title, ht.track.imgUrl as imgUrl, ht.track.trackUrl as trackUrl,ht.track.countPlay as countPlays, ht.track.countLike as countLikes, ht.user.name as uploader
+                        select ht.track.id as id,ht.track.peaks as peaks, u.id as  uploaderId, ht.track.title as title, ht.track.imgUrl as imgUrl, ht.track.trackUrl as trackUrl,ht.track.countPlay as countPlay, ht.track.countLike as countLike, ht.user.name as uploader
                         from HistoryTrack ht
                         join ht.user u
                         where u.id = :userId
@@ -41,4 +43,35 @@ public interface HistoryTrackRepository
                         listened_at = NOW()
                         """, nativeQuery = true)
         void upsertHistory(Long userId, Long trackId, Integer duration);
+
+        @Query(value = """
+                        select
+                                 t.*
+                        from
+                                tracks t
+                        join
+                        	history_tracks ht
+                        on
+                        	t.id = ht.track_id
+                        where
+                        	ht.user_id  = :userId
+                        order by
+                         	ht.listened_at
+                        desc
+                        """, countQuery = """
+                        select
+                                count(*)
+                        from
+                                tracks t
+                        join
+                        	history_tracks ht
+                        on
+                        	t.id = ht.track_id
+                        where
+                        	ht.user_id  = 1
+                        order by
+                         	ht.listened_at
+                        desc
+                                """, nativeQuery = true)
+        Page<Track> getTrackHistoryWithNative(@Param("userId") Long userId, Pageable pageable);
 }
