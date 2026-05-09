@@ -1,5 +1,6 @@
 package djnd.project.SoundCloud.services;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
@@ -7,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +22,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.AccessLevel;
 import lombok.Data;
@@ -29,7 +33,8 @@ import lombok.experimental.FieldDefaults;
 public class FileService {
     @Value("${djnd.upload-file.base-uri}")
     private String baseURI;
-
+    @Value("${djnd.soundcloud.location.folder.waveform}")
+    private String waveformFolder;
     @Autowired
     private Cloudinary cloudinary;
 
@@ -142,6 +147,22 @@ public class FileService {
 
     public String getCloudinaryUrl(String publicId, String resourceType) {
         return cloudinary.url().publicId(publicId).resourceType(resourceType).format("mp3").secure(true).toString();
+    }
+
+    public String uploadWaveformJson(List<Integer> peaks) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> waveform = new HashMap<>();
+        waveform.put("data", peaks);
+        File jsonFile = File.createTempFile("waveform", ".json");
+        mapper.writeValue(jsonFile, waveform);
+        var publicId = "waveform-" + System.currentTimeMillis();
+        Map params = ObjectUtils.asMap(
+                "public_id", publicId,
+                "folder", waveformFolder,
+                "resource_type", "raw");
+        Map uploadResult = cloudinary.uploader().upload(jsonFile, params);
+        jsonFile.delete();
+        return uploadResult.get("secure_url").toString();
     }
 
     public UploadResult uploadToCloudinary(MultipartFile file, String folder) throws IOException {

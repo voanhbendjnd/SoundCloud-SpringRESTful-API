@@ -2,6 +2,8 @@ package djnd.project.SoundCloud.domain.response;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
@@ -19,6 +21,8 @@ public class TrackResponse {
     Integer countLike;
     Long countPlay;
     Uploader uploader;
+    @JsonProperty("waveform_url")
+    String waveformUrl;
     Boolean isLiked;
     LocalDateTime createdAt, updatedAt;
 

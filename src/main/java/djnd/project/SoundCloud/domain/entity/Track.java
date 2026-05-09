@@ -68,7 +68,7 @@ public class Track {
     List<PlaylistTrack> playlistTracks;
     @OneToMany(mappedBy = "track", cascade = CascadeType.ALL, orphanRemoval = true)
     List<HistoryTrack> historyTracks;
-
+    String waveformUrl;
     @PrePersist
     public void handleBeforeCreateAt() {
         this.updatedAt = LocalDateTime.now();

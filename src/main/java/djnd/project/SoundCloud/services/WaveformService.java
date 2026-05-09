@@ -28,7 +28,7 @@ public class WaveformService {
     private static final Logger log = LoggerFactory.getLogger(WaveformService.class);
 
     private final TrackRepository trackRepository;
-
+    private final FileService fileService;
     @Value("${djnd.soundcloud.audiowaveform.path}")
     private String audiowaveformPath;
 
@@ -45,9 +45,10 @@ public class WaveformService {
 
             Path tempAudio = download(track.getTrackUrl());
 
-            List<Double> peaks = generate(tempAudio);
-
-            track.setPeaks(convert(peaks));
+            List<Integer> peaks = generate(tempAudio);
+            // var lastPeaks = convert(peaks);
+            track.setWaveformUrl(this.fileService.uploadWaveformJson(peaks));
+            // track.setPeaks(lastPeaks);
             trackRepository.save(track);
 
             Files.deleteIfExists(tempAudio);
@@ -68,7 +69,7 @@ public class WaveformService {
         return file;
     }
 
-    private List<Double> generate(Path audio) throws Exception {
+    private List<Integer> generate(Path audio) throws Exception {
         Path json = audio.resolveSibling(audio.getFileName() + ".json");
 
         ProcessBuilder pb = new ProcessBuilder(
@@ -85,7 +86,22 @@ public class WaveformService {
         String content = Files.readString(json);
         Files.deleteIfExists(json);
 
-        return parse(content);
+        return parseToInteger(content);
+    }
+
+    private List<Integer> parseToInteger(String json) throws Exception {
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        JsonNode root = mapper.readTree(json);
+
+        List<Integer> result = new ArrayList<>();
+
+        for (JsonNode n : root.get("data")) {
+            result.add(n.asInt());
+        }
+
+        return result;
     }
 
     private List<Double> parse(String json) throws Exception {
@@ -110,4 +126,5 @@ public class WaveformService {
         sb.append("]");
         return sb.toString();
     }
+
 }

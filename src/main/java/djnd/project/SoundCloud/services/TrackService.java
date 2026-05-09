@@ -241,7 +241,7 @@ public class TrackService {
         result.setTrackUrl(x.getTrackUrl());
         result.setUpdatedAt(x.getUpdatedAt());
         result.setPeaks(x.getPeaks());
-
+        result.setWaveformUrl(x.getWaveformUrl());
         var user = x.getUser();
         var uploader = new TrackResponse.Uploader();
         // uploader.setEmail(user.getEmail());
@@ -424,11 +424,13 @@ public class TrackService {
     }
 
     public ResultPaginationDTO getRecommendations(String category, List<Long> excludeIds, Pageable pageable) {
-        if (excludeIds == null) excludeIds = List.of(-1L);
-        else if (excludeIds.isEmpty()) excludeIds.add(-1L);
+        if (excludeIds == null)
+            excludeIds = List.of(-1L);
+        else if (excludeIds.isEmpty())
+            excludeIds.add(-1L);
 
         Page<Track> page = this.trackRepository.findByByCategoryAndIdNotIn(category, excludeIds, pageable);
-        
+
         if (page.getContent().isEmpty()) {
             page = this.trackRepository.findAllByIdNotIn(excludeIds, pageable);
         }
