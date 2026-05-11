@@ -13,8 +13,8 @@ import lombok.experimental.FieldDefaults;
 public class PlaylistDTO {
     Long id;
     String title;
-    String imgUrl;
     String description;
     Boolean isPublic;
     List<Long> trackIds;
+    String currentImg;
 }

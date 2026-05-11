@@ -118,6 +118,9 @@ public class FileService {
 
     public String uploadToTemp(MultipartFile file) throws IOException {
         String originalName = file.getOriginalFilename();
+        if (!this.allowedTypeFile(originalName)) {
+            throw new IOException("File Invalid");
+        }
         if (originalName == null)
             originalName = "filename";
         String publicId = "t-" + System.currentTimeMillis();
@@ -165,8 +168,22 @@ public class FileService {
         return uploadResult.get("secure_url").toString();
     }
 
+    private boolean allowedTypeFile(String file) {
+        if (file == null || file.isEmpty()) {
+            return false;
+        }
+        var lastFileOrigin = file.toLowerCase();
+        if (lastFileOrigin == null)
+            return false;
+        var allowed = List.of(".jpg", "jpeg", "png", ".mp3", ".m4a", ".flac", ".wav");
+        return allowed.stream().anyMatch(lastFileOrigin::endsWith);
+    }
+
     public UploadResult uploadToCloudinary(MultipartFile file, String folder) throws IOException {
         String originalName = file.getOriginalFilename();
+        if (!this.allowedTypeFile(originalName)) {
+            throw new IOException("File Invalid");
+        }
         if (originalName == null)
             originalName = "filename";
 

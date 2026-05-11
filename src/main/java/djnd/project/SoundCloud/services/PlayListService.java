@@ -1,14 +1,17 @@
 package djnd.project.SoundCloud.services;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import djnd.project.SoundCloud.domain.entity.Playlist;
 import djnd.project.SoundCloud.domain.entity.PlaylistTrack;
@@ -30,13 +33,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 @Service
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 @RequiredArgsConstructor
 public class PlayListService {
-    PlaylistRepository playlistRepository;
-    UserService userService;
-    TrackRepository trackRepository;
-    PlaylistTrackRepository playlistTrackRepository;
+    final PlaylistRepository playlistRepository;
+    final UserService userService;
+    final TrackRepository trackRepository;
+    final PlaylistTrackRepository playlistTrackRepository;
+    final FileService fileService;
+    @Value("${djnd.soundcloud.location.folder.img}")
+    private String imgFolder;
 
     public ResPlaylist createNewPlaylist(PlaylistDTO dto) throws PermissionException {
         var playlist = new Playlist();
@@ -225,5 +231,18 @@ public class PlayListService {
         }
 
         return res;
+    }
+
+    public ResPlaylist updatePlaylist(PlaylistDTO dto, MultipartFile imgUrl) throws IOException {
+        var playlist = playlistRepository.findById(dto.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Playlist ID", dto.getId()));
+        if (imgUrl != null) {
+            var resSaveImg = this.fileService.uploadToCloudinary(imgUrl, imgFolder);
+            playlist.setImgUrl(resSaveImg.getSecureUrl());
+        }
+        playlist.setTitle(dto.getTitle());
+        playlist.setDescription(dto.getDescription());
+        playlist.setIsPublic(dto.getIsPublic());
+        return this.toResPlaylist(this.playlistRepository.save(playlist));
     }
 }
